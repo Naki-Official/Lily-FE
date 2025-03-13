@@ -7,6 +7,9 @@ export default {
     extend: {
       fontFamily: {
         primary: ['Inter', ...defaultTheme.fontFamily.sans],
+        sans: ['var(--font-inter)', ...defaultTheme.fontFamily.sans],
+        'sf-compact-rounded': ['var(--font-sf-compact-rounded)', ...defaultTheme.fontFamily.sans],
+        'sf-compact': ['var(--font-sf-compact)', ...defaultTheme.fontFamily.sans],
       },
       colors: {
         primary: {
