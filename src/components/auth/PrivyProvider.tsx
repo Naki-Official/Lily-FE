@@ -1,7 +1,6 @@
 'use client';
 
 import { PrivyProvider as PrivyAuthProvider } from '@privy-io/react-auth';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
 interface PrivyProviderProps {
@@ -14,8 +13,6 @@ interface PrivyProviderProps {
  * that need to respond to successful authentication
  */
 export default function PrivyProvider({ children }: PrivyProviderProps) {
-  const router = useRouter();
-
   return (
     <PrivyAuthProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
@@ -26,7 +23,7 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
           theme: 'light',
           accentColor: '#162D3A',
           // Update with actual logo URL from public directory
-          logo: '/images/lily-logo.png',
+          logo: '/images/lily.jpg',
         },
         // Create embedded wallets for users who don't have one
         embeddedWallets: {

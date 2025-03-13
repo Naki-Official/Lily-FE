@@ -11,7 +11,50 @@ import PrivyProvider from '@/components/auth/PrivyProvider';
 
 import { siteConfig } from '@/constant/config';
 
-// Load SF Compact fonts
+// Load SF Pro fonts
+const sfProRounded = localFont({
+  src: [
+    {
+      path: '../../public/fonts/SF-Pro-Rounded-Semibold.otf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/SF-Pro-Rounded-Medium.otf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/SF-Pro-Rounded-Regular.otf',
+      weight: '400',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-sf-pro-rounded',
+});
+
+const sfPro = localFont({
+  src: [
+    {
+      path: '../../public/fonts/SF-Pro-Text-Semibold.otf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/SF-Pro-Text-Medium.otf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../../public/fonts/SF-Pro-Text-Regular.otf',
+      weight: '400',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-sf-pro',
+});
+
+// Keep the existing SF Compact fonts for backward compatibility
 const sfCompactRounded = localFont({
   src: [
     {
@@ -44,10 +87,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: 'Naki AI',
-    template: `%s | Naki AI`,
+    default: 'Lily AI',
+    template: `%s | Lily AI`,
   },
-  description: 'Naki AI - Your AI Assistant',
+  description: 'Lily AI - Your AI Assistant',
   robots: { index: true, follow: true },
   // !STARTERCONF this is the default favicon, you can generate your own from https://realfavicongenerator.net/
   // ! copy to /favicon folder
@@ -59,17 +102,17 @@ export const metadata: Metadata = {
   manifest: `/favicon/site.webmanifest`,
   openGraph: {
     url: siteConfig.url,
-    title: 'Naki AI',
-    description: 'Naki AI - Your AI Assistant',
-    siteName: 'Naki AI',
+    title: 'Lily AI',
+    description: 'Lily AI - Your AI Assistant',
+    siteName: 'Lily AI',
     images: [`${siteConfig.url}/images/og.jpg`],
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Naki AI',
-    description: 'Naki AI - Your AI Assistant',
+    title: 'Lily AI',
+    description: 'Lily AI - Your AI Assistant',
     images: [`${siteConfig.url}/images/og.jpg`],
   },
 };
@@ -80,7 +123,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`}>
+    <html lang="en" className={`${inter.variable} ${sfProRounded.variable} ${sfPro.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`}>
       <body className="bg-white font-sans">
         <PrivyProvider>{children}</PrivyProvider>
       </body>
