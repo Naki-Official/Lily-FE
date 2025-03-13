@@ -4,6 +4,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
+import { TokenIcon } from '@/components/ui/TokenIcon';
+
 /**
  * Portfolio Management page component based on the Figma design
  * Shows portfolio value, holdings, and recommendations
@@ -11,6 +13,28 @@ import * as React from 'react';
 export default function PortfolioPage() {
   const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
+
+  // Get user's wallet address or use email as fallback
+  const userDisplayName = React.useMemo(() => {
+    if (!user) return '';
+    
+    // Check if user has linked wallets
+    if (user.linkedAccounts && user.linkedAccounts.length > 0) {
+      // Find the first wallet account
+      const walletAccount = user.linkedAccounts.find(account => 
+        account.type === 'wallet' || account.type === 'smart_wallet'
+      );
+      
+      if (walletAccount && walletAccount.address) {
+        // Shorten the wallet address for display (e.g., 0x1234...5678)
+        const address = walletAccount.address;
+        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+      }
+    }
+    
+    // Fallback to email or default
+    return user.email?.address || 'Anonymous User';
+  }, [user]);
 
   // Redirect to auth page if not authenticated
   React.useEffect(() => {
@@ -77,7 +101,7 @@ export default function PortfolioPage() {
                   <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#8A8A8E"/>
                 </svg>
               </div>
-              <span className="font-sf-pro text-base text-[#162D3A]">Gustavo Xavier</span>
+              <span className="font-sf-pro text-base text-[#162D3A]">{userDisplayName}</span>
             </div>
             <button 
               onClick={handleLogout}
@@ -143,7 +167,9 @@ export default function PortfolioPage() {
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <p className="font-sf-pro text-sm font-semibold">BTC</p>
+                      <div className="flex justify-center mb-2">
+                        <TokenIcon symbol="BTC" size={32} />
+                      </div>
                       <p className="font-sf-pro text-lg font-semibold">2000 SOL</p>
                     </div>
                   </div>

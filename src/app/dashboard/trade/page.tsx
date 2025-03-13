@@ -4,6 +4,8 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
+import { TokenIcon } from '@/components/ui/TokenIcon';
+
 /**
  * Trade page component based on the Figma design
  * Shows trading interface with buy/sell options
@@ -13,6 +15,28 @@ export default function TradePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState('trade');
   const [buyOrSell, setBuyOrSell] = React.useState('buy');
+
+  // Get user's wallet address or use email as fallback
+  const userDisplayName = React.useMemo(() => {
+    if (!user) return '';
+    
+    // Check if user has linked wallets
+    if (user.linkedAccounts && user.linkedAccounts.length > 0) {
+      // Find the first wallet account
+      const walletAccount = user.linkedAccounts.find(account => 
+        account.type === 'wallet' || account.type === 'smart_wallet'
+      );
+      
+      if (walletAccount && walletAccount.address) {
+        // Shorten the wallet address for display (e.g., 0x1234...5678)
+        const address = walletAccount.address;
+        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+      }
+    }
+    
+    // Fallback to email or default
+    return user.email?.address || 'Anonymous User';
+  }, [user]);
 
   // Redirect to auth page if not authenticated
   React.useEffect(() => {
@@ -76,7 +100,7 @@ export default function TradePage() {
                   <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#8A8A8E"/>
                 </svg>
               </div>
-              <span className="font-sf-pro text-base text-[#162D3A]">Gustavo Xavier</span>
+              <span className="font-sf-pro text-base text-[#162D3A]">{userDisplayName}</span>
             </div>
             <button 
               onClick={handleLogout}
@@ -218,7 +242,7 @@ export default function TradePage() {
                       <tr key={index} className="border-b border-[#F2F2F7]">
                         <td className="py-4">
                           <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-full" style={{ backgroundColor: item.color }}></div>
+                            <TokenIcon symbol={item.token} size={32} />
                             <span className="font-sf-pro font-medium text-[#162D3A]">{item.token}</span>
                           </div>
                         </td>
