@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  token     String
+  amount    Float
+  price     Float
+  type      String
+  date      DateTime @default(now())
+}
+
+model Portfolio {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String
+  asset      String
+  quantity   Float
+  avgPrice   Float
+}
