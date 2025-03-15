@@ -421,18 +421,22 @@ export async function POST(req: Request) {
       case 'transactions':
         // In a real app, you would fetch transactions from the blockchain
         // For now, we'll use mock data
-        const transactionsFormatted = mockTransactions.map(tx => {
-          if (tx.type === 'Send') {
-            return `- ${tx.date}: Sent ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
-          } else if (tx.type === 'Receive') {
-            return `- ${tx.date}: Received ${tx.amount} ${tx.token} from ${tx.from} (${tx.status})`;
-          } else {
-            return `- ${tx.date}: Swapped ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
-          }
-        }).join('\n');
-        
-        response = `Here are your recent transactions:\n\n${transactionsFormatted}`;
-        break;
+        case 'transactions': {
+  // In a real app, you would fetch transactions from the blockchain
+  // For now, we'll use mock data
+  const transactionsFormatted = mockTransactions.map(tx => {
+    if (tx.type === 'Send') {
+      return `- ${tx.date}: Sent ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
+    } else if (tx.type === 'Receive') {
+      return `- ${tx.date}: Received ${tx.amount} ${tx.token} from ${tx.from} (${tx.status})`;
+    } else {
+      return `- ${tx.date}: Swapped ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
+    }
+  }).join('\n');
+  
+  response = `Here are your recent transactions:\n\n${transactionsFormatted}`;
+  break;
+}
         
       case 'swap':
         // Handle token swap functionality
