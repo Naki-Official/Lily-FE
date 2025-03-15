@@ -43,6 +43,62 @@ const coinGeckoIds = {
   'SONIC': 'sonic-token'
 };
 
+// Add these interfaces at the top of the file, after the existing imports
+interface CoinGeckoData {
+  symbol: string;
+  name: string;
+  categories: string[];
+  twitter_acc: string | null;
+  sentiment_votes_up: number | null;
+  sentiment_votes_down: number | null;
+  watchlist_users: number;
+  market_cap_rank: number;
+  description: string;
+  current_price: number;
+  ath: number;
+  ath_change_percentage: number;
+  atl: number;
+  atl_change_percentage: number;
+  market_cap: number;
+  total_volume: number;
+  high_24h: number;
+  low_24h: number;
+  price_change_24h: number;
+  price_change_percentage_24h: number;
+  price_change_percentage_7d: number;
+  price_change_percentage_14d: number;
+  price_change_percentage_30d: number;
+  price_change_percentage_60d: number;
+}
+
+interface Token {
+  name: string;
+  slug: string;
+  ticker: string;
+  creationDate: string;
+  profileImageUrl: string;
+  contractAddress: string;
+  marketCap: number;
+  holdersCount: number;
+  tokenPrice: number;
+  tokenPrice3DaysAgo: number;
+  tokenPriceChangePercent: number;
+  smartFollowersCount: number;
+  mindshare: number;
+  mindsharePrevious: number;
+  mindshareDelta: number;
+  mindshareDeltaPercent: number;
+  volume24HoursDeltaPercent: number;
+  entryPrice: number;
+  takeProfit: number;
+  coinGeckoData: CoinGeckoData;
+}
+
+interface TopCoin {
+  finalScore: number;
+  token: Token;
+}
+
 // Function to fetch all coins from CoinGecko API
 async function fetchCoinGeckoIds() {
   try {
@@ -323,7 +379,8 @@ export async function POST(req: Request) {
       { intent: 'swap', patterns: [/swap/i, /exchange/i, /convert/i, /trade/i] },
       { intent: 'send', patterns: [/send/i, /transfer/i, /pay/i] },
       { intent: 'price', patterns: [/price/i, /worth/i, /value/i, /cost/i, /market/i] },
-      { intent: 'help', patterns: [/help/i, /command/i, /what can you do/i, /capabilities/i] }
+      { intent: 'help', patterns: [/help/i, /command/i, /what can you do/i, /capabilities/i] },
+      { intent: 'recommendations', patterns: [/recommend/i, /suggestion/i, /top coin/i, /best coin/i, /ai recommend/i, /what to buy/i, /what should i buy/i, /investment/i] }
     ];
     
     // Determine the most likely intent
@@ -479,9 +536,96 @@ export async function POST(req: Request) {
                   "- Getting real-time token prices from CoinGecko\n" +
                   "- Viewing transaction history\n" +
                   "- Sending SOL or tokens (coming soon)\n" +
-                  "- Swapping tokens (coming soon)\n\n" +
+                  "- Swapping tokens (coming soon)\n" +
+                  "- Providing AI-recommended top coins for investment\n\n" +
                   "What would you like to do?";
         break;
+        
+      case 'recommendations': {
+        try {
+          // Fetch top coin recommendations from our API
+          // Use a proper URL construction that works in both development and production
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+          
+          // For server-side API routes, we can use a relative URL
+          const topCoinsUrl = '/api/top-coins';
+          
+          console.log('Attempting to fetch recommendations from:', topCoinsUrl);
+          
+          let topCoins;
+          try {
+            const topCoinsResponse = await fetch(topCoinsUrl, { 
+              method: 'GET',
+              headers: { 'Accept': 'application/json' }
+            });
+            
+            if (!topCoinsResponse.ok) {
+              throw new Error(`Failed to fetch recommendations: ${topCoinsResponse.status}`);
+            }
+            
+            topCoins = await topCoinsResponse.json();
+          } catch (fetchError) {
+            console.error('Error fetching from internal API:', fetchError);
+            
+            // Try fetching directly from the external API as a fallback
+            console.log('Attempting direct fallback to external API');
+            const externalApiUrl = 'http://35.240.191.75:8000/api/top-agents';
+            const apiKey = 'vFZMxMy2BdsBY37rVd404uIuZpre3Txeprk7uD6KzdSlG7EbCBBisxZjr9W1JEU7';
+            
+            const externalResponse = await fetch(externalApiUrl, {
+              method: 'GET',
+              headers: {
+                'x-api-key': apiKey,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!externalResponse.ok) {
+              throw new Error(`External API fallback failed: ${externalResponse.status}`);
+            }
+            
+            topCoins = await externalResponse.json();
+          }
+          
+          if (!topCoins || topCoins.length === 0) {
+            response = "I don't have any coin recommendations at the moment. Please try again later.";
+            break;
+          }
+          
+          // Format the top coins data for display
+          const recommendationsFormatted = topCoins
+            .slice(0, 3) // Limit to top 3 recommendations
+            .map((coin: TopCoin, index: number) => {
+              const token = coin.token;
+              const geckoData = token.coinGeckoData;
+              
+              return `${index + 1}. ${token.name} (${token.ticker})\n` +
+                     `   Price: $${token.tokenPrice.toFixed(8)}\n` +
+                     `   Market Cap: $${Math.round(token.marketCap).toLocaleString()}\n` +
+                     `   24h Change: ${geckoData.price_change_percentage_24h.toFixed(2)}%\n` +
+                     `   Entry Price: $${token.entryPrice.toFixed(8)}\n` +
+                     `   Take Profit: $${token.takeProfit.toFixed(8)}\n` +
+                     `   Score: ${coin.finalScore.toFixed(2)}\n`;
+            })
+            .join('\n');
+          
+          // Check if we're using mock data (by checking a specific property that would only be in our mock data)
+          const isMockData = topCoins.some((coin: TopCoin) => 
+            coin.token.name === "HYPE3" && coin.token.ticker === "COOL" && 
+            coin.token.contractAddress === "9iQFnxrDDMFrhLx2pYJCDeqN3wFuaBimQkUnZQHNpump"
+          );
+          
+          const mockDataDisclaimer = isMockData ? 
+            "\n\n⚠️ Note: The AI recommendation service is currently unavailable. These are sample recommendations for demonstration purposes only." : "";
+          
+          response = `Here are my top coin recommendations based on AI analysis:\n\n${recommendationsFormatted}\n\nThese recommendations are based on market data, social metrics, and AI analysis. Always do your own research before investing.${mockDataDisclaimer}`;
+        } catch (error) {
+          console.error('Error fetching coin recommendations:', error);
+          response = "I'm sorry, I couldn't retrieve coin recommendations at the moment. Please try again later.";
+        }
+        break;
+      }
         
       default:
         response = "I can help you with Solana operations like checking your balance, viewing your wallet address, and more. What would you like to do?";
