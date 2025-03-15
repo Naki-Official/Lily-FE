@@ -30,4 +30,5 @@ router.get("/:userId", async (req: Request, res: Response) => {
   }
 });
 
+// Fetch all trades for a user
 module.exports = router;

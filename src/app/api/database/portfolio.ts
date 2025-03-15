@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 
 import { Request, Response } from 'express';
 
+
 export const getPortfolio = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;

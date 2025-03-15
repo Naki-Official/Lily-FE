@@ -9,6 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // Parse JSON requests
 
+
 // ✅ **POST /api/trades → Store Trade in DB**
 app.post("/api/trades", async (req, res) => {
   try {
