@@ -8,6 +8,7 @@ import { TokenIcon } from '@/components/ui/TokenIcon';
 
 import { tokens } from '@/constant/tokens';
 
+
 /**
  * Dashboard page component based on the Figma design
  * Shows trading performance, portfolio management, and token information
