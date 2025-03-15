@@ -9,12 +9,12 @@ datasource db {
 
 model Trade {
   id         String @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String
-  token     String
-  amount    Float
-  price     Float
-  type      String
-  date      DateTime @default(now())
+  userId     String
+  asset      String
+  quantity   Float
+  price      Float
+  tradeType  String  // "buy" or "sell"
+  timestamp  DateTime @default(now())
 }
 
 model Portfolio {
@@ -24,3 +24,4 @@ model Portfolio {
   quantity   Float
   avgPrice   Float
 }
+

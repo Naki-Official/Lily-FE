@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"pnpm run backend\" \"next dev\"",
+    "backend": "nodemon server.js",
+    "frontend": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -58,6 +60,7 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "autoprefixer": "^10.4.17",
+    "concurrently": "^9.1.2",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.1.0",
     "eslint-config-prettier": "^9.1.0",

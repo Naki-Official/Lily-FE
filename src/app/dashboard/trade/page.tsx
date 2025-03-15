@@ -8,6 +8,7 @@ import { TokenIcon } from '@/components/ui/TokenIcon';
 
 import { tokens } from '@/constant/tokens';
 
+
 /**
  * Trade page component based on the Figma design
  * Shows trading interface with buy/sell options
