@@ -4,8 +4,8 @@ type OpenGraphType = {
   templateTitle?: string;
   logo?: string;
 };
-// !STARTERCONF This OG is generated from https://github.com/theodorusclarence/og
-// Please clone them and self-host if your site is going to be visited by many people.
+// OG Image Generator Configuration
+// Please update the logo URL to your own hosted image
 // Then change the url and the default logo.
 export function openGraph({
   siteName,

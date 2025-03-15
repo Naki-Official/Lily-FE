@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
+import { tokens } from '@/constant/tokens';
+
 /**
  * Home page component based on the Figma design
  * Shows a chat interface with Lily AI and navigation to the dashboard
@@ -164,12 +166,12 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Token cards */}
                 {[
-                  { name: 'AI16Z', symbol: 'AI16Z', change: '+67%', value: '37%', color: '#007AFF' },
-                  { name: 'PEPE', symbol: 'PEPE', change: '+42%', value: '28%', color: '#34C759' },
-                  { name: 'DOGE', symbol: 'DOGE', change: '+31%', value: '19%', color: '#FF9500' },
-                  { name: 'SHIB', symbol: 'SHIB', change: '+25%', value: '15%', color: '#FF3B30' },
-                  { name: 'FLOKI', symbol: 'FLOKI', change: '+18%', value: '12%', color: '#5856D6' },
-                  { name: 'BONK', symbol: 'BONK', change: '+15%', value: '9%', color: '#FF2D55' }
+                  { name: tokens.AI16Z.name, symbol: 'AI16Z', change: '+67%', value: '37%', color: tokens.AI16Z.color },
+                  { name: tokens.KWEEN.name, symbol: 'KWEEN', change: '+42%', value: '28%', color: tokens.KWEEN.color },
+                  { name: tokens.TNSR.name, symbol: 'TNSR', change: '+31%', value: '19%', color: tokens.TNSR.color },
+                  { name: tokens.OPUS.name, symbol: 'OPUS', change: '+25%', value: '15%', color: tokens.OPUS.color },
+                  { name: tokens.NAVAL.name, symbol: 'NAVAL', change: '+18%', value: '12%', color: tokens.NAVAL.color },
+                  { name: tokens.JARVIS.name, symbol: 'JARVIS', change: '+15%', value: '9%', color: tokens.JARVIS.color }
                 ].map((token, index) => (
                   <div key={index} className="rounded-2xl bg-white p-6 shadow-sm">
                     <div className="flex items-center justify-between">

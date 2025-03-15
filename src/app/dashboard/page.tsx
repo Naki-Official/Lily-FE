@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
+import { tokens } from '@/constant/tokens';
+
 /**
  * Dashboard page component based on the Figma design
  * Shows trading performance, portfolio management, and token information
@@ -178,8 +180,8 @@ export default function DashboardPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[#E5E5EA]">
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E]">Token</th>
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E]">Address</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E] w-[200px]">Token</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E] w-[300px]">Address</th>
                       <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E]">Total Received</th>
                       <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E]">Total Spent (USD)</th>
                       <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#8A8A8E]">Current Value (USD)</th>
@@ -188,28 +190,31 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {[
-                      { token: 'AI16Z', address: 'HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC', received: '30.244979', spent: '$491.40', value: '$688.68', profit: '+40.1%', color: '#007AFF', isProfit: true },
-                      { token: 'KWEEN', address: 'DEf93bSt8dx58gDFCcz4CwbjYZzjwaRBYAciJYLfdCA9', received: '650.5621', spent: '$446.80', value: '$585.25', profit: '+31.0%', color: '#34C759', isProfit: true },
-                      { token: 'KAIA', address: 'KAiA1xTir7B5xTbT5m3bU3GxGcTMFMHG9g3QV9Fb9wG4', received: '120.3456', spent: '$350.00', value: '$280.00', profit: '-20.0%', color: '#FF3B30', isProfit: false },
-                      { token: 'TNSR', address: 'TNsRvmcYr5QeT7e4uT7d3YwREFnQM1ubQYX5z4JG8Uvx', received: '45.6789', spent: '$230.50', value: '$310.25', profit: '+34.6%', color: '#FF9500', isProfit: true },
-                      { token: 'OPUS', address: 'OPuS1Xn2ZswvZNUNPNPNPNPNPNPNPNPNPNPNPNPNPNPNPN', received: '78.9012', spent: '$400.00', value: '$356.00', profit: '-11.0%', color: '#5856D6', isProfit: false }
-                    ].map((item, index) => (
-                      <tr key={index} className="border-b border-[#F2F2F7]">
-                        <td className="py-4">
-                          <div className="flex items-center space-x-3">
-                            <TokenIcon symbol={item.token} size={32} />
-                            <span className="font-sf-pro font-medium text-[#162D3A]">{item.token}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 font-sf-pro text-sm text-[#8A8A8E]">{item.address}</td>
-                        <td className="py-4 font-sf-pro text-[#162D3A]">{item.received}</td>
-                        <td className="py-4 font-sf-pro text-[#162D3A]">{item.spent}</td>
-                        <td className="py-4 font-sf-pro text-[#162D3A]">{item.value}</td>
-                        <td className="py-4 text-center">
-                          <span className={`font-sf-pro font-medium ${item.isProfit ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{item.profit}</span>
-                        </td>
-                      </tr>
-                    ))}
+                      { token: 'AI16Z', received: '30.244979', spent: '$491.40', value: '$688.68', profit: '+40.1%', isProfit: true },
+                      { token: 'KWEEN', received: '650.5621', spent: '$446.80', value: '$585.25', profit: '+31.0%', isProfit: true },
+                      { token: 'TNSR', received: '45.6789', spent: '$230.50', value: '$310.25', profit: '+34.6%', isProfit: true },
+                      { token: 'OPUS', received: '78.9012', spent: '$400.00', value: '$356.00', profit: '-11.0%', isProfit: false },
+                      { token: 'NAVAL', received: '92.3456', spent: '$320.50', value: '$380.25', profit: '+18.6%', isProfit: true }
+                    ].map((item, index) => {
+                      const tokenData = tokens[item.token];
+                      return (
+                        <tr key={index} className="border-b border-[#F2F2F7]">
+                          <td className="py-4 pr-8">
+                            <div className="flex items-center space-x-3">
+                              <TokenIcon symbol={item.token} size={32} />
+                              <span className="font-sf-pro font-medium text-[#162D3A]">{tokenData.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 pr-8 font-sf-pro text-sm text-[#8A8A8E]">{tokenData.address}</td>
+                          <td className="py-4 pr-8 font-sf-pro text-[#162D3A]">{item.received}</td>
+                          <td className="py-4 pr-8 font-sf-pro text-[#162D3A]">{item.spent}</td>
+                          <td className="py-4 pr-8 font-sf-pro text-[#162D3A]">{item.value}</td>
+                          <td className="py-4 text-center">
+                            <span className={`font-sf-pro font-medium ${item.isProfit ? 'text-[#34C759]' : 'text-[#FF3B30]'}`}>{item.profit}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -235,25 +240,25 @@ export default function DashboardPage() {
               {/* Token list */}
               <div className="space-y-4">
                 {[
-                  { token: 'AI16Z', percentage: '25%', color: '#007AFF' },
-                  { token: 'KWEEN', percentage: '18%', color: '#34C759' },
-                  { token: 'KAIA', percentage: '15%', color: '#FF3B30' },
-                  { token: 'TNSR', percentage: '12%', color: '#FF9500' },
-                  { token: 'OPUS', percentage: '10%', color: '#5856D6' },
-                  { token: 'NAVAL', percentage: '8%', color: '#FF2D55' },
-                  { token: 'JARVIS', percentage: '5%', color: '#AF52DE' },
-                  { token: 'WAIFU', percentage: '4%', color: '#5AC8FA' },
-                  { token: 'WHISP', percentage: '2%', color: '#FFCC00' },
-                  { token: 'FXN', percentage: '1%', color: '#8A8A8E' }
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <TokenIcon symbol={item.token} size={24} />
-                      <span className="font-sf-pro text-[#162D3A]">{item.token}</span>
+                  { token: 'AI16Z', percentage: '25%' },
+                  { token: 'KWEEN', percentage: '20%' },
+                  { token: 'TNSR', percentage: '15%' },
+                  { token: 'OPUS', percentage: '15%' },
+                  { token: 'NAVAL', percentage: '10%' },
+                  { token: 'JARVIS', percentage: '8%' },
+                  { token: 'WAIFU', percentage: '7%' }
+                ].map((item, index) => {
+                  const tokenData = tokens[item.token];
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <TokenIcon symbol={item.token} size={32} />
+                        <span className="font-sf-pro text-sm text-[#121212]">{tokenData.name}</span>
+                      </div>
+                      <span className="font-sf-pro text-sm text-[#8A8A8E]">{item.percentage}</span>
                     </div>
-                    <span className="font-sf-pro text-[#8A8A8E]">{item.percentage}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

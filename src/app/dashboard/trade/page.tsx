@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
+import { tokens } from '@/constant/tokens';
+
 /**
  * Trade page component based on the Figma design
  * Shows trading interface with buy/sell options
@@ -233,17 +235,17 @@ export default function TradePage() {
                   </thead>
                   <tbody>
                     {[
-                      { token: 'BTC', price: '$36,750.00', day: '+3.2%', week: '+5.7%', cap: '$715.8B', color: '#F7931A' },
-                      { token: 'ETH', price: '$2,456.78', day: '+2.1%', week: '-1.3%', cap: '$295.4B', color: '#627EEA' },
-                      { token: 'SOL', price: '$98.45', day: '+4.5%', week: '+12.8%', cap: '$42.1B', color: '#00FFA3' },
-                      { token: 'DOGE', price: '$0.078', day: '-1.2%', week: '+8.5%', cap: '$10.9B', color: '#C2A633' },
-                      { token: 'SHIB', price: '$0.00002', day: '+6.7%', week: '+15.2%', cap: '$8.3B', color: '#FF3B30' }
+                      { token: 'AI16Z', price: '$36.75', day: '+3.2%', week: '+5.7%', cap: '$715.8M' },
+                      { token: 'KWEEN', price: '$24.56', day: '+2.1%', week: '-1.3%', cap: '$295.4M' },
+                      { token: 'TNSR', price: '$9.84', day: '+4.5%', week: '+12.8%', cap: '$42.1M' },
+                      { token: 'OPUS', price: '$7.80', day: '-1.2%', week: '+8.5%', cap: '$10.9M' },
+                      { token: 'NAVAL', price: '$15.20', day: '+6.7%', week: '+15.2%', cap: '$8.3M' }
                     ].map((item, index) => (
                       <tr key={index} className="border-b border-[#F2F2F7]">
                         <td className="py-4">
                           <div className="flex items-center space-x-3">
                             <TokenIcon symbol={item.token} size={32} />
-                            <span className="font-sf-pro font-medium text-[#162D3A]">{item.token}</span>
+                            <span className="font-sf-pro font-medium text-[#162D3A]">{tokens[item.token].name}</span>
                           </div>
                         </td>
                         <td className="py-4 font-sf-pro text-[#162D3A]">{item.price}</td>

@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
+import { tokens } from '@/constant/tokens';
+
 /**
  * Portfolio Management page component based on the Figma design
  * Shows portfolio value, holdings, and recommendations
@@ -168,7 +170,7 @@ export default function PortfolioPage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="flex justify-center mb-2">
-                        <TokenIcon symbol="BTC" size={32} />
+                        <TokenIcon symbol="SOL" size={32} />
                       </div>
                       <p className="font-sf-pro text-lg font-semibold">2000 SOL</p>
                     </div>
@@ -176,27 +178,28 @@ export default function PortfolioPage() {
                 </div>
                 
                 <div className="space-y-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-[#000000]"></div>
-                      <span className="font-sf-pro text-sm text-[#121212]">BTC</span>
-                    </div>
-                    <span className="font-sf-pro text-sm text-[#8A8A8E]">40%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-[#D9D9D9]"></div>
-                      <span className="font-sf-pro text-sm text-[#121212]">Meme</span>
-                    </div>
-                    <span className="font-sf-pro text-sm text-[#8A8A8E]">30%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-6 w-6 rounded-full bg-[#717A8C]"></div>
-                      <span className="font-sf-pro text-sm text-[#121212]">Others</span>
-                    </div>
-                    <span className="font-sf-pro text-sm text-[#8A8A8E]">30%</span>
-                  </div>
+                  {[
+                    { token: 'AI16Z', amount: '30.244979', value: '2,000', change: '+3%' },
+                    { token: 'KWEEN', amount: '650.5621', value: '1,000', change: '+2%' },
+                    { token: 'TNSR', amount: '45.6789', value: '500', change: '+2%' },
+                    { token: 'OPUS', amount: '78.9012', value: '500', change: '+2%' }
+                  ].map((item, index) => {
+                    const tokenData = tokens[item.token];
+                    return (
+                      <tr key={index} className="border-b border-[#CECECE]">
+                        <td className="py-4 font-sf-pro text-sm font-medium text-[#292D32]">{tokenData.name}</td>
+                        <td className="py-4 font-sf-pro text-sm text-[#292D32]">{item.amount}</td>
+                        <td className="py-4 font-sf-pro text-sm text-[#292D32]">{item.value} SOL</td>
+                        <td className="py-4 font-sf-pro text-sm text-[#149D52]">{item.change}</td>
+                        <td className="py-4">
+                          <div className="flex space-x-2">
+                            <button className="rounded bg-[#59CD30] px-3 py-1 text-xs text-white">Buy</button>
+                            <button className="rounded bg-[#FC0000] px-3 py-1 text-xs text-white">Sell</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </div>
               </div>
             </div>

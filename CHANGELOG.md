@@ -1,8 +1,8 @@
 <!-- //!STARTERCONF Remove this file, this is used as the starter changelog -->
 
-# ts-nextjs-tailwind-starter changelog
+# Project Changelog
 
-This changelog is manually generated and not accurate with the package.json, only to show the changes since the last release.
+This changelog is manually generated and tracks changes to the project.
 
 ## 1.0.0 - 2023-07-17
 
@@ -126,7 +126,7 @@ This changelog is manually generated and not accurate with the package.json, onl
 
     https://user-images.githubusercontent.com/55318172/146631994-e1cac137-1664-4cfe-950b-a96decc1eaa6.mp4
 
-    Check out the [expansion pack repository](https://github.com/theodorusclarence/expansion-pack) for the commands
+    Check out the [expansion pack repository](https://github.com/your-org/expansion-pack) for the commands
 
 ### Improvements & Bug Fixes
 
@@ -293,7 +293,7 @@ Snippets such as React import, useState, useEffect, React Component. [View more]
     3 Husky hooks including:
 
     1. pre-commit, running `next lint` and format the code using prettier
-    2. commit-msg, running commitlint to ensure the use of [Conventional Commit](https://theodorusclarence.com/library/conventional-commit-readme) for commit messages
+    2. commit-msg, running commitlint to ensure the use of [Conventional Commit](https://example.com/conventional-commit) for commit messages
     3. post-merge, running `yarn` every `git pull` or after merge to ensure all new packages are installed and ready to go
 
 - #### Default Favicon Declaration
@@ -302,7 +302,7 @@ Snippets such as React import, useState, useEffect, React Component. [View more]
 
 - #### Default Tailwind CSS Base Styles
 
-    There are default styles for responsive heading sizes, and `.layout` to support a max-width for larger screen size. Find more about it on [my blog post](https://theodorusclarence.com/blog/tailwindcss-best-practice#1-using-layout-class-or-container)
+    There are default styles for responsive heading sizes, and `.layout` to support a max-width for larger screen size. Find more about it on [my blog post](https://example.com/blog/layout-class)
 
 - #### Open Graph Generator
 
@@ -311,7 +311,7 @@ Snippets such as React import, useState, useEffect, React Component. [View more]
 
     Open Graph is generated using [og.thcl.dev](https://og.thcl.dev), but please fork and self-host if your website is going to have a lot of traffic.
 
-    Check out the [repository](https://github.com/theodorusclarence/og) to see the API parameters.
+    Check out the [repository](https://github.com/your-org/og) to see the API parameters.
 
 - #### Preloaded & Self Hosted Inter Fonts
 
@@ -326,7 +326,7 @@ This starter is equipped with workspace-snippets, it is encouraged to use it, es
 File inside `src/pages` will be the webpage route, there are 2 things that need to be added in Next.js page:
 
 1. Seo component
-2. Layout class to give constraint to viewport width. [Read more about layout class](https://theodorusclarence.com/blog/tailwindcss-best-practice#1-using-layout-class-or-container).
+2. Layout class to give constraint to viewport width. [Read more about layout class](https://example.com/blog/layout-class)
 
 Snippets: `np`
 
