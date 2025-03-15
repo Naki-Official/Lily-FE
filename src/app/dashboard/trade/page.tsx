@@ -72,8 +72,6 @@ export default function TradePage() {
     );
   }
 
-
-
   return (
     <main className="min-h-screen bg-[#F9F9F9]">
       {/* Main content container */}
@@ -387,5 +385,4 @@ export default function TradePage() {
       </div>
     </main>
   );
-}
-
+} 

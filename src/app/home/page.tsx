@@ -7,7 +7,6 @@ import * as React from 'react';
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
 import { tokens } from '@/constant/tokens';
-import PastTrades from '@/dashboard/trade/PastTrades';
 
 /**
  * Home page component based on the Figma design
