@@ -19,7 +19,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Fetch all trades for a user
-router.get("/:userId", async (req, res) => {
+router.get("/:userId", async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const trades = await prisma.trade.findMany({ where: { userId } });
