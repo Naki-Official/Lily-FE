@@ -103,14 +103,10 @@ importers:
         version: 6.21.0(eslint@8.57.1)(typescript@5.8.2)
       autoprefixer:
         specifier: ^10.4.17
-<<<<<<< HEAD
-        version: 10.4.21(postcss@8.5.3)
+        version: 10.4.20(postcss@8.5.1)
       concurrently:
         specifier: ^9.1.2
         version: 9.1.2
-=======
-        version: 10.4.20(postcss@8.5.1)
->>>>>>> parent of affce4d (backend update)
       eslint:
         specifier: ^8.56.0
         version: 8.57.1
@@ -14516,11 +14512,7 @@ snapshots:
   '@zodios/core@10.9.6(axios@1.8.3)(zod@3.24.1)':
     dependencies:
       axios: 1.8.3
-<<<<<<< HEAD
-      zod: 3.24.2
-=======
       zod: 3.24.1
->>>>>>> parent of affce4d (backend update)
 
   JSONStream@1.3.5:
     dependencies:
@@ -17719,11 +17711,7 @@ snapshots:
       zod: 3.24.1
       zod-to-json-schema: 3.24.3(zod@3.24.1)
     optionalDependencies:
-<<<<<<< HEAD
-      '@langchain/groq': 0.1.3(@langchain/core@0.3.42(openai@4.87.3(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.2)))(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-=======
       '@langchain/groq': 0.1.3(@langchain/core@0.3.42(openai@4.87.3(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.24.1)))(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
->>>>>>> parent of affce4d (backend update)
       axios: 1.8.3
     transitivePeerDependencies:
       - encoding
@@ -19245,11 +19233,7 @@ snapshots:
       '@tiplink/api': 0.3.1(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(sodium-native@3.4.1)(utf-8-validate@5.0.10)
       '@voltr/vault-sdk': 0.1.6(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)(utf-8-validate@5.0.10)
       '@wormhole-foundation/sdk': 1.13.2(@types/react@18.3.18)(axios@1.8.3)(bufferutil@4.0.9)(encoding@0.1.13)(got@11.8.6)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.2)(utf-8-validate@5.0.10)
-<<<<<<< HEAD
-      ai: 4.1.61(react@18.3.1)(zod@3.24.2)
-=======
       ai: 4.1.61(react@18.3.1)(zod@3.24.1)
->>>>>>> parent of affce4d (backend update)
       axios: 1.8.3
       bn.js: 5.2.1
       bs58: 6.0.0
