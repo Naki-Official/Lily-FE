@@ -418,9 +418,6 @@ export async function POST(req: Request) {
         }
         break;
         
-      case 'transactions':
-        // In a real app, you would fetch transactions from the blockchain
-        // For now, we'll use mock data
         case 'transactions': {
   // In a real app, you would fetch transactions from the blockchain
   // For now, we'll use mock data

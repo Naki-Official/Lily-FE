@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
+
 const prisma = new PrismaClient();
 const router = express.Router();
 
@@ -30,5 +31,5 @@ router.get("/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// Fetch all trades for a user
-module.exports = router;
+// Export the router correctly for ES modules
+export default router;

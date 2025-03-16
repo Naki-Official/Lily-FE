@@ -3,6 +3,7 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
 export default function PortfolioPage() {
