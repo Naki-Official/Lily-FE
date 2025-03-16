@@ -1,11 +1,11 @@
-import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import express, { Request, Response } from 'express';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 // Create a new trade
-router.post("/", async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { userId, asset, quantity, price, tradeType } = req.body;
 
@@ -20,7 +20,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Fetch all trades for a user
-router.get("/:userId", async (req: Request, res: Response) => {
+router.get('/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const trades = await prisma.trade.findMany({ where: { userId } });

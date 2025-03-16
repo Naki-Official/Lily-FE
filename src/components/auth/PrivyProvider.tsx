@@ -34,4 +34,4 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
       {children}
     </PrivyAuthProvider>
   );
-} 
+}
