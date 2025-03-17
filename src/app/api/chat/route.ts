@@ -1,5 +1,11 @@
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
 import bs58 from 'bs58';
+import { NextResponse } from 'next/server';
 import { createSolanaTools, SolanaAgentKit } from 'solana-agent-kit';
+
+import { fetchTopRecommendedCoins, TopCoin } from '@/lib/api';
+import prisma from '@/lib/prisma';
 
 // Mock transaction data (in a real app, this would come from the blockchain)
 const mockTransactions = [
@@ -33,7 +39,7 @@ const mockTransactions = [
 ];
 
 // CoinGecko token ID mapping
-const coinGeckoIds = {
+const coinGeckoIds: Record<string, string> = {
   SOL: 'solana',
   USDC: 'usd-coin',
   BONK: 'bonk',
@@ -94,9 +100,20 @@ interface Token {
   coinGeckoData: CoinGeckoData;
 }
 
-interface TopCoin {
-  finalScore: number;
-  token: Token;
+interface TokenPriceData {
+  price: number;
+  price_change_percentage_24h: number;
+  market_cap: number;
+  total_volume: number;
+  high_24h: number;
+  low_24h: number;
+}
+
+// Define the message interface based on Vercel AI SDK requirements
+interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  id?: string;
 }
 
 // Function to fetch all coins from CoinGecko API
@@ -210,34 +227,47 @@ let lastCacheTime = 0;
 const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 
 // Initialize Solana Agent Kit with proper configuration
-// We create it outside the handler to reuse the same instance
-const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY!;
+// We create it outside the handler to reuse the same instance, but with error handling
+let solanaKit: SolanaAgentKit | null = null;
 
-// Validate the private key format
 try {
-  const decodedPrivateKey = bs58.decode(privateKeyBase58);
-  if (decodedPrivateKey.length !== 64) {
-    console.error('Invalid Solana private key length. It should be 64 bytes.');
+  const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY;
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+  
+  if (privateKeyBase58 && rpcUrl) {
+    // Validate the private key format
+    try {
+      const decodedPrivateKey = bs58.decode(privateKeyBase58);
+      if (decodedPrivateKey.length !== 64) {
+        console.warn('Invalid Solana private key length. It should be 64 bytes.');
+      }
+      
+      // Create the Solana Agent Kit instance with all available API keys
+      solanaKit = new SolanaAgentKit(
+        privateKeyBase58,
+        rpcUrl,
+        {
+          OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+          COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY,
+        },
+      );
+      
+      console.log('Solana Agent Kit initialized successfully');
+    } catch (error) {
+      console.error('Error initializing Solana Agent Kit:', error);
+    }
+  } else {
+    console.warn('Missing Solana configuration. NEXT_PUBLIC_SOLANA_PRIVATE_KEY or NEXT_PUBLIC_RPC_URL not set.');
   }
 } catch (error) {
-  console.error('Error decoding private key:', error);
+  console.error('Error in Solana Agent Kit setup:', error);
 }
 
-// Create the Solana Agent Kit instance with all available API keys
-export const solanaKit = new SolanaAgentKit(
-  privateKeyBase58,
-  process.env.NEXT_PUBLIC_RPC_URL!,
-  {
-    OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-    COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY,
-  },
-);
-
-// Create LangChain tools for more advanced use cases
-const tools = createSolanaTools(solanaKit);
+// Create LangChain tools if SolanaAgentKit is available
+const tools = solanaKit ? createSolanaTools(solanaKit) : [];
 
 // Helper function to get token prices from CoinGecko API
-async function getTokenPrices(tokenSymbols: string[]) {
+async function getTokenPrices(tokenSymbols: string[]): Promise<Record<string, TokenPriceData> | null> {
   try {
     // Get or refresh the CoinGecko IDs cache
     const now = Date.now();
@@ -246,60 +276,33 @@ async function getTokenPrices(tokenSymbols: string[]) {
       if (fetchedIds) {
         coinGeckoIdsCache = fetchedIds;
         lastCacheTime = now;
-      } else if (!coinGeckoIdsCache) {
-        // If we couldn't fetch and don't have a cache, fall back to hardcoded values
-        coinGeckoIdsCache = coinGeckoIds;
       }
-      // If fetch failed but we have a cache, keep using the existing cache
     }
 
-    // Ensure we have a valid cache before proceeding
-    if (!coinGeckoIdsCache) {
-      console.error('Failed to initialize CoinGecko IDs cache');
-      return null;
-    }
+    // If we don't have a valid cache, use the default mapping
+    const idsMapping = coinGeckoIdsCache || coinGeckoIds;
 
-    // First, check if CoinGecko API is available
-    try {
-      const pingUrl = 'https://api.coingecko.com/api/v3/ping';
-      const pingResponse = await fetch(pingUrl);
-      if (!pingResponse.ok) {
-        console.error(
-          'CoinGecko API ping failed:',
-          pingResponse.status,
-          pingResponse.statusText,
-        );
-        return null;
-      }
-      console.log('CoinGecko API ping successful');
-    } catch (pingError) {
-      console.error('Error pinging CoinGecko API:', pingError);
-      return null;
-    }
-
-    // Get CoinGecko IDs for the requested symbols
-    const ids = tokenSymbols
+    // Get the CoinGecko IDs for the requested tokens
+    const tokenIds = tokenSymbols
       .map((symbol) => {
-        if (coinGeckoIdsCache) {
-          return coinGeckoIdsCache[symbol.toUpperCase()];
+        const uppercaseSymbol = symbol.toUpperCase();
+        const id = idsMapping[uppercaseSymbol];
+        if (!id) {
+          console.warn(`No CoinGecko ID found for token: ${symbol}`);
         }
-        return undefined;
+        return id;
       })
-      .filter((id) => id !== undefined)
-      .join(',');
+      .filter(Boolean); // Remove any undefined values
 
-    if (!ids) {
-      console.error('No valid CoinGecko IDs found for symbols:', tokenSymbols);
+    if (tokenIds.length === 0) {
+      console.warn('No valid CoinGecko IDs found for the requested tokens');
       return null;
     }
 
-    // Construct the CoinGecko API URL - use free tier without API key
-    const baseUrl = 'https://api.coingecko.com/api/v3';
-
-    // Use the simple/price endpoint to get current prices and 24h change
-    const url = `${baseUrl}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
-
-    console.log('Fetching CoinGecko data from URL:', url);
+    // Fetch the current prices for the tokens
+    const ids = tokenIds.join(',');
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
+    console.log('Fetching token prices from URL:', url);
 
     // Implement retry mechanism
     let retries = 3;
@@ -308,7 +311,6 @@ async function getTokenPrices(tokenSymbols: string[]) {
 
     while (retries > 0) {
       try {
-        // Fetch data from CoinGecko
         response = await fetch(url, {
           headers: {
             Accept: 'application/json',
@@ -343,388 +345,179 @@ async function getTokenPrices(tokenSymbols: string[]) {
       return null;
     }
 
-    const data = await response.json();
-    console.log('CoinGecko API response:', JSON.stringify(data));
+    const pricesData = await response.json();
+    console.log(`Fetched prices for ${pricesData.length} tokens from CoinGecko`);
 
-    // Format the price data
-    const result: Record<string, { price: number; change: number }> = {};
+    // Create a mapping of token symbol to price data
+    const pricesMapping: Record<string, TokenPriceData> = {};
 
-    // Map the results back to token symbols
-    for (const symbol of tokenSymbols) {
-      const upperSymbol = symbol.toUpperCase();
-      const id = coinGeckoIdsCache ? coinGeckoIdsCache[upperSymbol] : undefined;
+    for (const data of pricesData) {
+      // Find the original symbol by looking up the ID in our idsMapping
+      const originalSymbol = Object.keys(idsMapping).find(
+        (key) => idsMapping[key] === data.id,
+      );
 
-      if (id && data[id] && data[id].usd) {
-        result[upperSymbol] = {
-          price: data[id].usd || 0,
-          change: data[id].usd_24h_change || 0,
+      if (originalSymbol) {
+        pricesMapping[originalSymbol] = {
+          price: data.current_price,
+          price_change_percentage_24h: data.price_change_percentage_24h,
+          market_cap: data.market_cap,
+          total_volume: data.total_volume,
+          high_24h: data.high_24h,
+          low_24h: data.low_24h,
         };
-        console.log(
-          `Successfully mapped ${upperSymbol} price:`,
-          result[upperSymbol],
-        );
-      } else {
-        console.error(
-          `Failed to get price data for ${upperSymbol} (ID: ${id})`,
-        );
-        if (id && data[id]) {
-          console.error(`Data for ${id}:`, JSON.stringify(data[id]));
-        }
       }
     }
 
-    return Object.keys(result).length > 0 ? result : null;
+    return pricesMapping;
   } catch (error) {
     console.error('Error fetching token prices from CoinGecko:', error);
     return null;
   }
 }
 
+// Cache for top recommended coins
+let topCoinsCache: TopCoin[] | null = null;
+let topCoinsLastFetchTime = 0;
+const TOP_COINS_CACHE_DURATION = 1800000; // 30 minutes in milliseconds
+
+// Fetch top recommended coins with caching
+async function getTopRecommendedCoins(): Promise<TopCoin[]> {
+  const now = Date.now();
+  
+  // Refresh cache if needed
+  if (!topCoinsCache || now - topCoinsLastFetchTime > TOP_COINS_CACHE_DURATION) {
+    try {
+      const coins = await fetchTopRecommendedCoins();
+      if (coins && coins.length > 0) {
+        topCoinsCache = coins;
+        topCoinsLastFetchTime = now;
+        console.log(`Fetched ${coins.length} top recommended coins`);
+      }
+    } catch (error) {
+      console.error('Error fetching top recommended coins:', error);
+    }
+  }
+  
+  return topCoinsCache || [];
+}
+
 // Initialize Solana Agent Kit with environment variables
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    const messages = body.messages as Message[];
+    
+    if (!Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: 'Invalid message format. Expected an array of messages.' },
+        { status: 400 }
+      );
+    }
+    
+    // Extract user ID from request headers
+    const userId = req.headers.get('x-user-id') || 'anonymous';
 
-    // Process the user's message
-    const userMessage = messages[messages.length - 1].content.toLowerCase();
-
-    // Use a simple approach to get a response from the Solana Agent Kit
-    // This will handle any Solana-related commands or queries
-    let response = "I'm sorry, I couldn't process your request.";
-
-    // First, determine the user's intent
-    const intentPatterns = [
-      {
-        intent: 'balance',
-        patterns: [/balance/i, /how much sol/i, /how many sol/i],
-      },
-      { intent: 'address', patterns: [/wallet/i, /address/i] },
-      {
-        intent: 'transactions',
-        patterns: [/transaction/i, /history/i, /recent activity/i],
-      },
-      {
-        intent: 'swap',
-        patterns: [/swap/i, /exchange/i, /convert/i, /trade/i],
-      },
-      { intent: 'send', patterns: [/send/i, /transfer/i, /pay/i] },
-      {
-        intent: 'price',
-        patterns: [/price/i, /worth/i, /value/i, /cost/i, /market/i],
-      },
-      {
-        intent: 'help',
-        patterns: [/help/i, /command/i, /what can you do/i, /capabilities/i],
-      },
-      {
-        intent: 'recommendations',
-        patterns: [
-          /recommend/i,
-          /suggestion/i,
-          /top coin/i,
-          /best coin/i,
-          /ai recommend/i,
-          /what to buy/i,
-          /what should i buy/i,
-          /investment/i,
-        ],
-      },
-    ];
-
-    // Determine the most likely intent
-    let detectedIntent = '';
-    for (const { intent, patterns } of intentPatterns) {
-      for (const pattern of patterns) {
-        if (pattern.test(userMessage)) {
-          detectedIntent = intent;
-          break;
+    // Try to save conversation to database, but don't let errors stop the main flow
+    if (process.env.DATABASE_URL) {
+      try {
+        // Check if database connection is available - but wrap in a try/catch
+        await prisma.$connect().catch((err: Error) => {
+          console.warn('Failed to connect to database:', err.message);
+        });
+        
+        // Only attempt to create a conversation if we have a valid Conversation model
+        if (prisma.conversation) {
+          await prisma.conversation.create({
+            data: {
+              userId,
+              messages: JSON.stringify(messages),
+              timestamp: new Date(),
+            },
+          }).catch((err: Error) => {
+            console.warn('Failed to save conversation:', err.message);
+          });
+          
+          console.log('Conversation saved to database');
+        } else {
+          console.warn('prisma.conversation is undefined. Make sure your Prisma schema is properly set up and the client has been generated.');
+        }
+      } catch (dbError) {
+        console.error('Error in database operations:', dbError);
+        // Continue execution even if database operations fail
+      } finally {
+        // Try to disconnect, but don't let errors stop the flow
+        try {
+          await prisma.$disconnect().catch(() => {});
+        } catch (e) {
+          // Ignore disconnect errors
         }
       }
-      if (detectedIntent) break;
+    } else {
+      console.log('DATABASE_URL not set, skipping database operations');
     }
 
-    // Handle the request based on the detected intent
-    switch (detectedIntent) {
-      case 'balance':
-        try {
-          const balance = await solanaKit.getBalance();
-          response = `Your current balance is ${balance} SOL.`;
-        } catch (err) {
-          console.error('Error getting balance:', err);
-          response =
-            "I couldn't retrieve your balance at the moment. Please try again later.";
-        }
-        break;
-
-      case 'address':
-        try {
-          // Access the wallet_address property
-          const address = solanaKit.wallet_address;
-          response = `Your wallet address is ${address}.`;
-        } catch (err) {
-          console.error('Error getting wallet address:', err);
-          response =
-            "I couldn't retrieve your wallet address at the moment. Please try again later.";
-        }
-        break;
-
-      case 'transactions': {
-        // In a real app, you would fetch transactions from the blockchain
-        // For now, we'll use mock data
-        const transactionsFormatted = mockTransactions
-          .map((tx) => {
-            if (tx.type === 'Send') {
-              return `- ${tx.date}: Sent ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
-            } else if (tx.type === 'Receive') {
-              return `- ${tx.date}: Received ${tx.amount} ${tx.token} from ${tx.from} (${tx.status})`;
-            } else {
-              return `- ${tx.date}: Swapped ${tx.amount} ${tx.token} to ${tx.to} (${tx.status})`;
-            }
-          })
-          .join('\n');
-
-        response = `Here are your recent transactions:\n\n${transactionsFormatted}`;
-        break;
-      }
-
-      case 'swap':
-        // Handle token swap functionality
-        response =
-          'The token swap feature is coming soon! Currently, I can help you check token prices, view your balance, or see transaction history.';
-        break;
-
-      case 'send':
-        // Handle send functionality
-        response =
-          'The send tokens feature is coming soon! Currently, I can help you check token prices, view your balance, or see transaction history.';
-        break;
-
-      case 'price':
-        try {
-          // This section handles token price queries
-          // First, check for specific token mentions using a more precise regex
-          const tokenRegexPatterns = [
-            /price of (\w+)/i, // "price of SOL"
-            /(\w+) price/i, // "SOL price"
-            /how much is (\w+)/i, // "how much is SOL"
-            /what is (\w+) worth/i, // "what is SOL worth"
-            /what is the price of (\w+)/i, // "what is the price of SOL"
-            /how much does (\w+) cost/i, // "how much does SOL cost"
-            /value of (\w+)/i, // "value of SOL"
-            /(\w+) token/i, // "SOL token"
-            /\b(sol|usdc|bonk|jto|pyth|wif|sonic)\b/i, // Direct token mention
-          ];
-
-          let tokenSymbol: string | null = null;
-
-          // Try each pattern to find a token match
-          for (const pattern of tokenRegexPatterns) {
-            const match = userMessage.match(pattern);
-            if (match && match[1]) {
-              const candidate = match[1].toUpperCase();
-
-              // Verify this is actually a known token before accepting it
-              if (coinGeckoIdsCache && coinGeckoIdsCache[candidate]) {
-                tokenSymbol = candidate;
-                break;
-              }
-            }
-          }
-
-          // If no match from patterns, try to extract token name from individual words
-          if (!tokenSymbol) {
-            const words = userMessage.split(/\s+/);
-            for (const word of words) {
-              // Only consider words that look like potential token symbols (2-5 characters)
-              const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-              if (
-                cleanWord.length >= 2 &&
-                cleanWord.length <= 5 &&
-                coinGeckoIdsCache &&
-                coinGeckoIdsCache[cleanWord]
-              ) {
-                tokenSymbol = cleanWord;
-                break;
-              }
-            }
-          }
-
-          // If we found a specific token, get its price
-          if (tokenSymbol) {
-            // Fetch real-time price data from CoinGecko
-            const tokenPrices = await getTokenPrices([tokenSymbol]);
-
-            if (tokenPrices && tokenPrices[tokenSymbol]) {
-              const tokenData = tokenPrices[tokenSymbol];
-              const changeSign = tokenData.change >= 0 ? '+' : '';
-              response = `Current ${tokenSymbol} price: $${tokenData.price.toFixed(tokenSymbol === 'BONK' ? 8 : 4)} (${changeSign}${tokenData.change.toFixed(2)}% in 24h)`;
-            } else {
-              response = `I couldn't retrieve price information for ${tokenSymbol} from CoinGecko. The API may be unavailable or rate limited.`;
-            }
-          }
-          // If no specific token was identified, show popular token prices
-          else {
-            // Show prices for popular tokens instead of all tokens
-            const popularTokens = ['SOL', 'USDC', 'BONK', 'JTO', 'PYTH', 'WIF'];
-            const tokenPrices = await getTokenPrices(popularTokens);
-
-            if (tokenPrices && Object.keys(tokenPrices).length > 0) {
-              const pricesFormatted = Object.entries(tokenPrices)
-                .map(([token, data]) => {
-                  const price =
-                    token === 'BONK'
-                      ? data.price.toFixed(8)
-                      : data.price.toFixed(4);
-                  const changeSign = data.change >= 0 ? '+' : '';
-                  return `- ${token}: $${price} (${changeSign}${data.change.toFixed(2)}%)`;
-                })
-                .join('\n');
-
-              response = `Here are the current prices for popular tokens from CoinGecko:\n\n${pricesFormatted}\n\nTo check a specific token, please mention its symbol (e.g., "What is the price of SOL?")`;
-            } else {
-              response =
-                "I couldn't retrieve token prices from CoinGecko. The API may be unavailable or rate limited.";
-            }
-          }
-        } catch (priceError) {
-          console.error('Error handling price request:', priceError);
-          response =
-            'I encountered an error while fetching token prices from CoinGecko. The API may be unavailable or rate limited.';
-        }
-        break;
-
-      case 'help':
-        response =
-          'I can help you with various Solana operations, including:\n\n' +
-          '- Checking your wallet balance\n' +
-          '- Viewing your wallet address\n' +
-          '- Getting real-time token prices from CoinGecko\n' +
-          '- Viewing transaction history\n' +
-          '- Sending SOL or tokens (coming soon)\n' +
-          '- Swapping tokens (coming soon)\n' +
-          '- Providing AI-recommended top coins for investment\n\n' +
-          'What would you like to do?';
-        break;
-
-      case 'recommendations': {
-        try {
-          // Fetch top coin recommendations from our API
-          // Use a proper URL construction that works in both development and production
-          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-
-          // For server-side API routes, we can use a relative URL
-          const topCoinsUrl = '/api/top-coins';
-
-          console.log('Attempting to fetch recommendations from:', topCoinsUrl);
-
-          let topCoins;
-          try {
-            const topCoinsResponse = await fetch(topCoinsUrl, {
-              method: 'GET',
-              headers: { Accept: 'application/json' },
-            });
-
-            if (!topCoinsResponse.ok) {
-              throw new Error(
-                `Failed to fetch recommendations: ${topCoinsResponse.status}`,
-              );
-            }
-
-            topCoins = await topCoinsResponse.json();
-          } catch (fetchError) {
-            console.error('Error fetching from internal API:', fetchError);
-
-            // Try fetching directly from the external API as a fallback
-            console.log('Attempting direct fallback to external API');
-            const externalApiUrl = 'http://35.240.191.75:8000/api/top-agents';
-            const apiKey =
-              'vFZMxMy2BdsBY37rVd404uIuZpre3Txeprk7uD6KzdSlG7EbCBBisxZjr9W1JEU7';
-
-            const externalResponse = await fetch(externalApiUrl, {
-              method: 'GET',
-              headers: {
-                'x-api-key': apiKey,
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-              },
-            });
-
-            if (!externalResponse.ok) {
-              throw new Error(
-                `External API fallback failed: ${externalResponse.status}`,
-              );
-            }
-
-            topCoins = await externalResponse.json();
-          }
-
-          if (!topCoins || topCoins.length === 0) {
-            response =
-              "I don't have any coin recommendations at the moment. Please try again later.";
-            break;
-          }
-
-          // Format the top coins data for display
-          const recommendationsFormatted = topCoins
-            .slice(0, 3) // Limit to top 3 recommendations
-            .map((coin: TopCoin, index: number) => {
-              const token = coin.token;
-              const geckoData = token.coinGeckoData;
-
-              return (
-                `${index + 1}. ${token.name} (${token.ticker})\n` +
-                `   Price: $${token.tokenPrice.toFixed(8)}\n` +
-                `   Market Cap: $${Math.round(token.marketCap).toLocaleString()}\n` +
-                `   24h Change: ${geckoData.price_change_percentage_24h.toFixed(2)}%\n` +
-                `   Entry Price: $${token.entryPrice.toFixed(8)}\n` +
-                `   Take Profit: $${token.takeProfit.toFixed(8)}\n` +
-                `   Score: ${coin.finalScore.toFixed(2)}\n`
-              );
-            })
-            .join('\n');
-
-          // Check if we're using mock data (by checking a specific property that would only be in our mock data)
-          const isMockData = topCoins.some(
-            (coin: TopCoin) =>
-              coin.token.name === 'HYPE3' &&
-              coin.token.ticker === 'COOL' &&
-              coin.token.contractAddress ===
-                '9iQFnxrDDMFrhLx2pYJCDeqN3wFuaBimQkUnZQHNpump',
-          );
-
-          const mockDataDisclaimer = isMockData
-            ? '\n\n⚠️ Note: The AI recommendation service is currently unavailable. These are sample recommendations for demonstration purposes only.'
-            : '';
-
-          response = `Here are my top coin recommendations based on AI analysis:\n\n${recommendationsFormatted}\n\nThese recommendations are based on market data, social metrics, and AI analysis. Always do your own research before investing.${mockDataDisclaimer}`;
-        } catch (error) {
-          console.error('Error fetching coin recommendations:', error);
-          response =
-            "I'm sorry, I couldn't retrieve coin recommendations at the moment. Please try again later.";
-        }
-        break;
-      }
-
-      default:
-        response =
-          'I can help you with Solana operations like checking your balance, viewing your wallet address, and more. What would you like to do?';
+    // Pre-fetch top recommended coins for the AI to use in its responses
+    // Use a try/catch to prevent errors from stopping the main flow
+    let topCoins: TopCoin[] = [];
+    try {
+      topCoins = await getTopRecommendedCoins();
+    } catch (error) {
+      console.warn('Failed to fetch top coins:', error);
+      // Continue with empty array
     }
 
-    // Return the response
-    return new Response(JSON.stringify({ response }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Prepare the conversation for AI processing
+    // The Vercel AI SDK expects messages to conform to specific format
+    const aiMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
+    // Add system message for Sendai agent
+    const systemMessageContent = `You are Sendai, an expert AI assistant specializing in Solana blockchain and cryptocurrency trading. 
+    Use your knowledge to provide helpful, accurate information about Solana, tokens, trading, and crypto markets.
+    The user's portfolio data, trading history, and preferences are stored in the database and can be used to provide personalized advice.
+    
+    ${topCoins.length > 0 
+      ? `Top Recommended Coins: ${topCoins.map(coin => 
+          `${coin.token.name} (${coin.token.ticker}) - Score: ${coin.finalScore.toFixed(2)} - Price: $${coin.token.tokenPrice.toFixed(6)} - Change: ${coin.token.tokenPriceChangePercent.toFixed(2)}%`
+        ).join(', ')}`
+      : 'Top coin recommendations are currently being fetched from our analysis engine.'
+    }
+    
+    Always be professional, concise, and focused on delivering value to the user.`;
+
+    const systemMessage = {
+      role: 'system' as const,
+      content: systemMessageContent
+    };
+
+    // Use the streamText method for streaming responses
+    try {
+      const result = await streamText({
+        model: openai('gpt-4-turbo'),
+        messages: [systemMessage, ...aiMessages],
+      });
+
+      return result.toDataStreamResponse();
+    } catch (streamError) {
+      console.error('Error streaming response:', streamError);
+      
+      // Fallback to non-streaming response if streaming fails
+      try {
+        return NextResponse.json({
+          id: 'fallback-response',
+          role: 'assistant',
+          content: 'I apologize, but I encountered an issue processing your request. Please try again in a moment.',
+        });
+      } catch (fallbackError) {
+        console.error('Error in fallback response:', fallbackError);
+        return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+      }
+    }
   } catch (error) {
-    console.error('Error in chat API route:', error);
-    return new Response(
-      JSON.stringify({
-        response:
-          "I'm sorry, I encountered an error processing your request. Please try again later.",
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    console.error('Error in chat route:', error);
+    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
   }
 }

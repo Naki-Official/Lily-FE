@@ -17,12 +17,27 @@ model Trade {
   timestamp  DateTime @default(now())
 }
 
-
 model Portfolio {
   id         String @id @default(auto()) @map("_id") @db.ObjectId
   userId     String
   asset      String
   quantity   Float
   avgPrice   Float
+}
+
+model Conversation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  messages  String   // Stores JSON stringified messages
+  timestamp DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  privyId   String   @unique
+  name      String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 

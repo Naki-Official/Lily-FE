@@ -14,6 +14,7 @@ const nextConfig = {
         hostname: 'dd.dexscreener.com',
       },
     ],
+    domains: ['pbs.twimg.com', 'example.com'],
   },
 
   // Uncoment to add domain whitelist
@@ -25,6 +26,12 @@ const nextConfig = {
   //     },
   //   ]
   // },
+
+  transpilePackages: ['ai'],
+  experimental: {
+    serverActions: true,
+    externalDir: true,
+  },
 
   webpack(config) {
     // Grab the existing rule that handles SVG imports

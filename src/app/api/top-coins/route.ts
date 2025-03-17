@@ -171,8 +171,8 @@ const mockTopCoins: TopCoin[] = [
 
 export async function GET() {
   try {
-    // API endpoint for top coins - ensure URL is properly formatted
-    const apiUrl = 'http://35.240.191.75:8000/api/top-agents';
+    // Update the API endpoint to match the Swagger documentation
+    const apiUrl = 'http://35.240.191.75:8000/api/v1/top-coins';
     const apiKey = process.env.NEXT_PUBLIC_TOP_AGENTS_API_KEY;
 
     console.log('Fetching top coins from:', apiUrl);

@@ -264,7 +264,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className='min-h-screen bg-[#F9F9F9]'>
+    <div className="min-h-screen bg-gradient-to-b from-violet-50 to-indigo-100">
       {/* Main content container */}
       <div className='mx-auto max-w-7xl px-6 py-8'>
         {/* Navigation */}
@@ -558,6 +558,7 @@ export default function HomePage() {
               {messages.some(
                 (msg) =>
                   msg.role === 'assistant' &&
+                  typeof msg.content === 'string' &&
                   msg.content.includes('Here are the current token prices'),
               ) && (
                 <div className='mb-4 flex flex-wrap gap-2'>
@@ -875,6 +876,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
