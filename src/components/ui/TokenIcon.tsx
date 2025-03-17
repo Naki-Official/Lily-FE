@@ -10,7 +10,11 @@ export interface TokenIconProps {
   className?: string;
 }
 
-export function TokenIcon({ symbol, size = 24, className = '' }: TokenIconProps) {
+export function TokenIcon({
+  symbol,
+  size = 24,
+  className = '',
+}: TokenIconProps) {
   const token = tokens[symbol] || { name: symbol, color: '#CBD5E1' };
 
   if (token.image) {
@@ -34,9 +38,9 @@ export function TokenIcon({ symbol, size = 24, className = '' }: TokenIconProps)
         backgroundColor: token.color,
       }}
     >
-      <span className="text-xs font-medium text-white">
+      <span className='text-xs font-medium text-white'>
         {symbol.slice(0, 3)}
       </span>
     </div>
   );
-} 
+}

@@ -123,8 +123,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${sfProRounded.variable} ${sfPro.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`}>
-      <body className="bg-white font-sans">
+    <html
+      lang='en'
+      className={`${inter.variable} ${sfProRounded.variable} ${sfPro.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`}
+    >
+      <body className='bg-white font-sans'>
         <PrivyProvider>{children}</PrivyProvider>
       </body>
     </html>

@@ -12,7 +12,7 @@ export default function AuthUI() {
   const { authenticated, ready } = usePrivy();
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
-  
+
   // Use the useLogin hook to handle login and success callback
   const { login } = useLogin({
     onComplete: () => {
@@ -39,28 +39,42 @@ export default function AuthUI() {
   };
 
   return (
-    <div className="flex flex-col space-y-4">
+    <div className='flex flex-col space-y-4'>
       <button
         onClick={handleLogin}
         disabled={isLoading}
         aria-busy={isLoading}
-        className="relative w-full rounded-xl bg-[#162D3A] px-6 py-4 text-center font-sf-compact text-xl font-semibold tracking-wide text-white transition-all hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+        className='relative w-full rounded-xl bg-[#162D3A] px-6 py-4 text-center font-sf-compact text-xl font-semibold tracking-wide text-white transition-all hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70'
       >
         {isLoading ? (
           <>
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+            <span className='absolute inset-0 flex items-center justify-center'>
+              <span className='h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent'></span>
             </span>
-            <span className="opacity-0">Sign in with Privy</span>
+            <span className='opacity-0'>Sign in with Privy</span>
           </>
         ) : (
           'Sign in with Privy'
         )}
       </button>
-      
-      <p className="text-center text-sm text-gray-500">
-        By signing in, you agree to our <a href="#" className="text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">Privacy Policy</a>.
+
+      <p className='text-center text-sm text-gray-500'>
+        By signing in, you agree to our{' '}
+        <a
+          href='#'
+          className='text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+        >
+          Terms of Service
+        </a>{' '}
+        and{' '}
+        <a
+          href='#'
+          className='text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+        >
+          Privacy Policy
+        </a>
+        .
       </p>
     </div>
   );
-} 
+}
