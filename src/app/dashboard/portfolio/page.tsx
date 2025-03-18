@@ -70,24 +70,24 @@ export default function PortfolioPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F0F1F2]">
+    <main className="min-h-screen bg-custom-gradient">
       {/* Main content container */}
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Navigation */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center space-x-10">
-            <h1 className="font-sf-pro-rounded text-4xl font-bold tracking-tight text-[#162D3A]">
+            <h1 className="font-sf-pro-rounded text-4xl font-bold tracking-tight text-white">
               Lily
             </h1>
             <nav className="flex space-x-8">
               <button 
-                className="font-sf-pro-rounded text-xl font-medium text-[#8A8A8E]"
+                className="font-sf-pro-rounded text-xl font-medium text-white/80 hover:text-white transition-colors"
                 onClick={handleHomeClick}
               >
                 Home
               </button>
               <button 
-                className="font-sf-pro-rounded text-xl font-medium text-[#8A8A8E]"
+                className="font-sf-pro-rounded text-xl font-medium text-white/80 hover:text-white transition-colors"
                 onClick={handleTradeClick}
               >
                 Trade
@@ -96,18 +96,18 @@ export default function PortfolioPage() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 rounded-full bg-white px-5 py-2.5 shadow-sm">
-              <div className="h-9 w-9 rounded-full bg-[#E5E5EA] flex items-center justify-center">
+            <div className="flex items-center space-x-3 rounded-full bg-white/10 backdrop-blur-sm px-5 py-2.5 shadow-sm border border-white/20">
+              <div className="h-9 w-9 rounded-full bg-custom-accent flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="#8A8A8E"/>
-                  <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#8A8A8E"/>
+                  <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="#312F32"/>
+                  <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#312F32"/>
                 </svg>
               </div>
-              <span className="font-sf-pro text-base text-[#162D3A]">{userDisplayName}</span>
+              <span className="font-sf-pro text-base text-white">{userDisplayName}</span>
             </div>
             <button 
               onClick={handleLogout}
-              className="flex items-center space-x-2 rounded-full px-5 py-2.5 text-[#FF3B30] hover:bg-red-50"
+              className="flex items-center space-x-2 rounded-full px-5 py-2.5 text-white bg-[rgba(255,59,48,0.2)] hover:bg-[rgba(255,59,48,0.3)] transition-colors border border-[rgba(255,59,48,0.3)]"
             >
               <span className="font-sf-pro text-base">Log out</span>
             </button>
@@ -120,7 +120,7 @@ export default function PortfolioPage() {
           <div className="col-span-2 space-y-8">
             <div className="flex items-center justify-between">
               <h2 
-                className="font-sf-pro-rounded text-2xl font-semibold text-[#162D3A] cursor-pointer"
+                className="font-sf-pro-rounded text-2xl font-semibold text-white cursor-pointer"
                 onClick={handleDashboardClick}
               >
                 Lily's Trading Performance
@@ -133,8 +133,8 @@ export default function PortfolioPage() {
             {/* Stats cards */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="rounded-xl bg-[#F9F9F9] p-6 shadow-sm">
-                <h3 className="font-sf-pro-rounded text-lg font-semibold text-[#162D3A]">Total Value</h3>
-                <p className="font-sf-pro-rounded text-2xl font-semibold text-[#162D3A] mt-2">3,500 SOL</p>
+                <h3 className="font-sf-pro-rounded text-lg font-semibold text-white">Total Value</h3>
+                <p className="font-sf-pro-rounded text-2xl font-semibold text-white mt-2">3,500 SOL</p>
                 <div className="mt-2 flex items-center text-sm text-[#34C759]">
                   <svg className="mr-1" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M8 3.33334V12.6667M8 3.33334L4 7.33334M8 3.33334L12 7.33334" stroke="#34C759" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -143,8 +143,8 @@ export default function PortfolioPage() {
                 </div>
               </div>
               <div className="rounded-xl bg-[#F9F9F9] p-6 shadow-sm">
-                <h3 className="font-sf-pro-rounded text-lg font-semibold text-[#162D3A]">Stable Balance</h3>
-                <p className="font-sf-pro-rounded text-2xl font-semibold text-[#162D3A] mt-2">500 USDC</p>
+                <h3 className="font-sf-pro-rounded text-lg font-semibold text-white">Stable Balance</h3>
+                <p className="font-sf-pro-rounded text-2xl font-semibold text-white mt-2">500 USDC</p>
                 <div className="mt-2 flex items-center text-sm text-[#34C759]">
                   <svg className="mr-1" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M8 3.33334V12.6667M8 3.33334L4 7.33334M8 3.33334L12 7.33334" stroke="#34C759" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -156,7 +156,7 @@ export default function PortfolioPage() {
 
             {/* My Portfolio */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h3 className="mb-6 font-sf-pro-rounded text-xl font-semibold text-[#162D3A]">My Portfolio</h3>
+              <h3 className="mb-6 font-sf-pro-rounded text-xl font-semibold text-white">My Portfolio</h3>
               <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="relative w-64 h-64">
                   {/* Portfolio pie chart */}
@@ -206,7 +206,7 @@ export default function PortfolioPage() {
 
             {/* Portfolio Value Over Time */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h3 className="mb-6 font-sf-pro text-sm font-medium text-[#162D3A]">Portfolio Value Over Time</h3>
+              <h3 className="mb-6 font-sf-pro text-sm font-medium text-white">Portfolio Value Over Time</h3>
               <div className="h-64 w-full relative">
                 {/* Chart grid lines */}
                 <div className="absolute left-0 right-0 top-1/4 border-t border-dashed border-[#E2E7E7]"></div>
@@ -231,24 +231,24 @@ export default function PortfolioPage() {
 
             {/* Holdings */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h3 className="mb-6 font-sf-pro text-sm font-medium text-[#162D3A]">Holdings</h3>
+              <h3 className="mb-6 font-sf-pro text-sm font-medium text-white">Holdings</h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[#000000]">
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#162D3A]">Asset</th>
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#162D3A]">Amount</th>
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#162D3A]">Current Value</th>
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#162D3A]">24H Change</th>
-                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-[#162D3A]">Actions</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-white">Asset</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-white">Amount</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-white">Current Value</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-white">24H Change</th>
+                      <th className="pb-4 text-left font-sf-pro text-sm font-medium text-white">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-[#CECECE]">
-                      <td className="py-4 font-sf-pro text-sm font-medium text-[#292D32]">BTC</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">0.4</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">2,000 SOL</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#149D52]">+3%</td>
+                      <td className="py-4 font-sf-pro text-sm font-medium text-white">BTC</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">0.4</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">2,000 SOL</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">+3%</td>
                       <td className="py-4">
                         <div className="flex space-x-2">
                           <button className="rounded bg-[#59CD30] px-3 py-1 text-xs text-white">Buy</button>
@@ -257,10 +257,10 @@ export default function PortfolioPage() {
                       </td>
                     </tr>
                     <tr className="border-b border-[#CECECE]">
-                      <td className="py-4 font-sf-pro text-sm font-medium text-[#292D32]">ETH</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">2.0</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">1,000 SOL</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#149D52]">+2%</td>
+                      <td className="py-4 font-sf-pro text-sm font-medium text-white">ETH</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">2.0</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">1,000 SOL</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">+2%</td>
                       <td className="py-4">
                         <div className="flex space-x-2">
                           <button className="rounded bg-[#59CD30] px-3 py-1 text-xs text-white">Buy</button>
@@ -269,10 +269,10 @@ export default function PortfolioPage() {
                       </td>
                     </tr>
                     <tr className="border-b border-[#CECECE]">
-                      <td className="py-4 font-sf-pro text-sm font-medium text-[#292D32]">SOL</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">500</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">500 SOL</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#149D52]">+2%</td>
+                      <td className="py-4 font-sf-pro text-sm font-medium text-white">SOL</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">500</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">500 SOL</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">+2%</td>
                       <td className="py-4">
                         <div className="flex space-x-2">
                           <button className="rounded bg-[#59CD30] px-3 py-1 text-xs text-white">Buy</button>
@@ -281,10 +281,10 @@ export default function PortfolioPage() {
                       </td>
                     </tr>
                     <tr className="border-b border-[#CECECE]">
-                      <td className="py-4 font-sf-pro text-sm font-medium text-[#292D32]">DOGE</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">10000</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#292D32]">500 SOL</td>
-                      <td className="py-4 font-sf-pro text-sm text-[#149D52]">+2%</td>
+                      <td className="py-4 font-sf-pro text-sm font-medium text-white">DOGE</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">10000</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">500 SOL</td>
+                      <td className="py-4 font-sf-pro text-sm text-white">+2%</td>
                       <td className="py-4">
                         <div className="flex space-x-2">
                           <button className="rounded bg-[#59CD30] px-3 py-1 text-xs text-white">Buy</button>
@@ -302,7 +302,7 @@ export default function PortfolioPage() {
           <div className="space-y-8">
             {/* Lily's Recommendations */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h3 className="mb-4 font-sf-pro text-sm font-medium text-[#162D3A]">Lily's Recommendations</h3>
+              <h3 className="mb-4 font-sf-pro text-sm font-medium text-white">Lily's Recommendations</h3>
               <hr className="mb-6 border-[#DBE5EB] opacity-80" />
               
               <div className="space-y-6">
@@ -327,7 +327,7 @@ export default function PortfolioPage() {
 
             {/* Recent Activity */}
             <div className="rounded-3xl bg-white p-8 shadow-sm">
-              <h3 className="mb-4 font-sf-pro text-sm font-medium text-[#162D3A]">Recent Activity</h3>
+              <h3 className="mb-4 font-sf-pro text-sm font-medium text-white">Recent Activity</h3>
               <hr className="mb-6 border-[#DBE5EB] opacity-80" />
               
               <div className="space-y-6">

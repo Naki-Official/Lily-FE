@@ -72,41 +72,44 @@ export default function TradePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F9F9F9]">
+    <main className="min-h-screen bg-custom-gradient">
       {/* Main content container */}
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Navigation */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center space-x-10">
-            <h1 className="font-sf-pro-rounded text-4xl font-bold tracking-tight text-[#162D3A]">
+            <h1 className="font-sf-pro-rounded text-4xl font-bold tracking-tight text-white">
               Lily
             </h1>
             <nav className="flex space-x-8">
               <button 
-                className="font-sf-pro-rounded text-xl font-medium text-[#8A8A8E]"
+                className="font-sf-pro-rounded text-xl font-medium text-white/80 hover:text-white transition-colors"
                 onClick={handleHomeClick}
               >
                 Home
               </button>
-              <button className="font-sf-pro-rounded text-xl font-medium text-[#162D3A]">
+              <button 
+                className="font-sf-pro-rounded text-xl font-medium text-white/80 hover:text-white transition-colors"
+                onClick={handleDashboardClick}
+              >
                 Trade
               </button>
             </nav>
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 rounded-full bg-white px-5 py-2.5 shadow-sm">
-              <div className="h-9 w-9 rounded-full bg-[#E5E5EA] flex items-center justify-center">
+            <div className="flex items-center space-x-3 rounded-full bg-white/10 backdrop-blur-sm px-5 py-2.5 shadow-sm border border-white/20">
+              <div className="h-9 w-9 rounded-full bg-custom-accent flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="#8A8A8E"/>
-                  <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#8A8A8E"/>
+                  <path d="M10 10C12.7614 10 15 7.76142 15 5C15 2.23858 12.7614 0 10 0C7.23858 0 5 2.23858 5 5C5 7.76142 7.23858 10 10 10Z" fill="#312F32"/>
+                  <path d="M10 11.5C5.8525 11.5 2.5 14.8525 2.5 19C2.5 19.5523 2.94772 20 3.5 20H16.5C17.0523 20 17.5 19.5523 17.5 19C17.5 14.8525 14.1475 11.5 10 11.5Z" fill="#312F32"/>
                 </svg>
               </div>
-              <span className="font-sf-pro text-base text-[#162D3A]">{userDisplayName}</span>
+              <span className="font-sf-pro text-base text-white">{userDisplayName}</span>
             </div>
             <button 
               onClick={handleLogout}
-              className="flex items-center space-x-2 rounded-full px-5 py-2.5 text-[#FF3B30] hover:bg-red-50"
+              className="flex items-center space-x-2 rounded-full px-5 py-2.5 text-white bg-[rgba(255,59,48,0.2)] hover:bg-[rgba(255,59,48,0.3)] transition-colors border border-[rgba(255,59,48,0.3)]"
             >
               <span className="font-sf-pro text-base">Log out</span>
             </button>
