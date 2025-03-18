@@ -13,6 +13,17 @@ interface PrivyProviderProps {
  * that need to respond to successful authentication
  */
 export default function PrivyProvider({ children }: PrivyProviderProps) {
+  // Detect build/SSG environment to prevent Privy initialization during build
+  const isServer = typeof window === 'undefined';
+  const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
+  
+  // If we're in a build environment, just render children without Privy
+  if (isBuildTime) {
+    console.log('Build environment detected, skipping Privy initialization');
+    return <>{children}</>;
+  }
+  
+  // In runtime environment, use the normal Privy provider
   return (
     <PrivyAuthProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}

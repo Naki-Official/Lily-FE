@@ -93,7 +93,7 @@ interface Token {
   coinGeckoData: CoinGeckoData;
 }
 
-interface TopCoin {
+interface _TopCoin {
   finalScore: number;
   token: Token;
 }
@@ -365,6 +365,15 @@ export async function POST(request: Request) {
 // Process the user message to generate a response
 async function processMessage(userMessage: string): Promise<string> {
   try {
+    // Check if we're in a build/SSG environment
+    const isServer = typeof window === 'undefined';
+    const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // If in build environment, return a generic response
+    if (isBuildTime) {
+      return "This is a placeholder response during build time. In the actual app, I can help you with Solana operations.";
+    }
+    
     // Dynamically import the utility functions
     const { initSolanaKit, mockTransactions, tokenAddresses } = await import('@/utils/solana-utils');
     

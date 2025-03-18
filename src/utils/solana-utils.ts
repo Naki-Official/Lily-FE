@@ -6,6 +6,19 @@
 // Initialize Solana Kit with proper error handling
 export async function initSolanaKit() {
   try {
+    // Check if we're in a build/SSG environment first
+    const isServer = typeof window === 'undefined';
+    const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
+    
+    // If running during build time, return mock data
+    if (isBuildTime) {
+      console.log('Running in build environment, returning mock Solana Kit');
+      return { 
+        solanaKit: null, 
+        tools: [] 
+      };
+    }
+    
     // Dynamic imports to avoid build-time errors
     const bs58Module = await import('bs58');
     const bs58 = bs58Module.default;
@@ -13,14 +26,14 @@ export async function initSolanaKit() {
     
     // Get environment variables - safely
     const privateKeyBase58 = typeof process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY === 'string' 
-      ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY 
+      ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.trim() 
       : '';
     
     let validKey = 'placeholder'; // Use placeholder as the default to prevent decode attempts on empty strings
     
     try {
       // Only attempt to decode if the key is a non-empty string
-      if (privateKeyBase58 && privateKeyBase58.trim().length > 0) {
+      if (privateKeyBase58 && privateKeyBase58.length > 0) {
         // Safely decode the private key
         try {
           const decodedPrivateKey = bs58.decode(privateKeyBase58);
