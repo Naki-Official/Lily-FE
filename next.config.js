@@ -61,13 +61,10 @@ const nextConfig = {
   },
 
   webpack(config, { dev, isServer }) {
-    // Add environment definition to help conditional client/server logic
-    config.plugins.push(
-      new config.webpack.DefinePlugin({
-        'process.env.NEXT_PHASE': JSON.stringify(process.env.NEXT_PHASE || ''),
-        'process.env.IS_BUILD': JSON.stringify(!dev && isServer),
-      }),
-    );
+    // Add environment variables to help with conditional rendering during build
+    if (typeof process.env.NEXT_PHASE !== 'undefined') {
+      process.env.IS_BUILD = (!dev && isServer).toString();
+    }
 
     // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>

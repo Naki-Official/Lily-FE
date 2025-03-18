@@ -6,11 +6,6 @@ import * as React from 'react';
 
 import StaticFallback from '@/components/fallback/StaticFallback';
 
-
-// Check if we're in a build/SSG environment
-const isServer = typeof window === 'undefined';
-const isBuildTime = isServer && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true');
-
 /**
  * Home page component based on the Figma design
  * Shows a chat interface with Lily AI and navigation to the dashboard
@@ -24,11 +19,6 @@ export default function HomePage() {
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
   
-  // During static generation/build time, show a fallback component
-  if (isBuildTime) {
-    return <StaticFallback />;
-  }
-
   // Redirect to auth page if not authenticated
   React.useEffect(() => {
     if (ready && !authenticated) {
@@ -90,6 +80,15 @@ export default function HomePage() {
   const handleExampleSwap = () => {
     setMessageInput('swap 0.1 SOL to USDC');
   };
+
+  // Check if we're in a build/SSG environment
+  const isServer = typeof window === 'undefined';
+  const isBuildTime = isServer && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true');
+  
+  // During static generation/build time, show a fallback component
+  if (isBuildTime) {
+    return <StaticFallback />;
+  }
 
   return (
     <div className="flex h-screen flex-col bg-gray-100">
