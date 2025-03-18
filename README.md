@@ -1,21 +1,30 @@
-# Lily AI - AI Trading Assistant
+# Lily AI - Solana AI Trading Assistant
 
-A modern web application built with Next.js, React, and Privy authentication that provides AI-powered trading assistance.
+A modern web application built with Next.js, React, and Privy authentication that provides AI-powered trading assistance on the Solana blockchain.
 
 ## Features
 
-- **Modern UI**: Clean and responsive design with Shadcn UI and Tailwind CSS
+- **Modern UI**: Clean and responsive design with Tailwind CSS
 - **Authentication**: Secure user authentication with Privy
 - **Personalized Experience**: Comprehensive onboarding flow to capture user preferences
-- **AI Assistant**: Advanced chat interface for trading assistance powered by Vercel AI SDK
+- **AI Assistant**: Advanced chat interface for trading assistance
+- **Solana Integration**: Direct interaction with the Solana blockchain for balance checks, token swaps, and transaction history
 - **Responsive Design**: Optimized for all devices from mobile to desktop
 - **Accessibility**: WCAG 2.1 compliant for an inclusive user experience
+
+## Solana Features
+
+- **Wallet Integration**: Display SOL balance and wallet address in the navigation bar
+- **Token Swapping**: Swap tokens directly through the chat interface with commands like "swap 1 USDC to SOL"
+- **Transaction History**: View your recent transactions directly in the chat
+- **Token Prices**: Get real-time token prices from CoinGecko
+- **Error Handling**: Robust error handling for network congestion and rate limits
 
 ## Tech Stack
 
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript
 - **Styling**: Tailwind CSS, Shadcn UI, Radix UI
-- **AI Integration**: Vercel AI SDK
+- **Blockchain**: Solana Agent Kit (Sendai) for Solana blockchain interaction
 - **Authentication**: Privy
 - **State Management**: React Server Components, React Hooks
 - **Package Manager**: pnpm
@@ -26,6 +35,7 @@ A modern web application built with Next.js, React, and Privy authentication tha
 
 - Node.js 18.17.0 or later
 - pnpm 8.0.0 or later
+- Solana wallet with some SOL for test transactions
 
 ### Installation
 
@@ -49,7 +59,12 @@ A modern web application built with Next.js, React, and Privy authentication tha
    NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id
 
    # AI Configuration
-   OPENAI_API_KEY=your-openai-api-key
+   NEXT_PUBLIC_OPENAI_API_KEY=your-openai-api-key
+
+   # Solana Configuration
+   NEXT_PUBLIC_SOLANA_PRIVATE_KEY=your-base58-encoded-private-key
+   NEXT_PUBLIC_RPC_URL=your-solana-rpc-url
+   NEXT_PUBLIC_COINGECKO_DEMO_API_KEY=your-coingecko-api-key
    ```
 
 4. Start the development server
@@ -65,23 +80,20 @@ A modern web application built with Next.js, React, and Privy authentication tha
 ```
 src/
 ├── app/                  # Next.js App Router
-│   ├── api/              # API routes including AI endpoints
+│   ├── api/              # API routes including chat and Solana endpoints
+│   │   ├── chat/         # Chat API routes with Solana integration
+│   │   └── top-coins/    # API for AI token recommendations
 │   ├── auth/             # Authentication pages
 │   ├── dashboard/        # Main dashboard
-│   ├── onboarding/       # User onboarding flow
+│   ├── home/             # Main home page with chat interface
 │   └── page.tsx          # Landing page
 ├── components/           # React components
 │   ├── auth/             # Auth-related components
 │   ├── chat/             # AI chat interface components
 │   ├── dashboard/        # Dashboard-specific components
-│   ├── onboarding/       # Onboarding flow components
 │   └── ui/               # Reusable UI components
+├── constant/             # Constant values like token information
 ├── lib/                  # Utility functions and shared logic
-│   ├── actions/          # Server actions
-│   ├── hooks/            # Custom React hooks
-│   ├── types/            # TypeScript type definitions
-│   └── utils/            # Helper utilities
-├── styles/               # Global styles
 └── public/               # Static assets
 ```
 
@@ -89,55 +101,49 @@ src/
 
 1. **Landing Page**: Users start here and click "Get Started"
 2. **Authentication**: Users sign in using Privy (email, wallet, social)
-3. **Onboarding**: Multi-step process to capture trading preferences and experience
-4. **Dashboard**: Main application with AI assistant and personalized insights
+3. **Home Page**: Main application with AI assistant for Solana interactions
+4. **Dashboard**: View portfolio, trading interface, and other features
+
+## Chat Commands
+
+The AI assistant can handle the following commands:
+
+- **Balance Check**: "What's my wallet balance?" or "balance"
+- **Wallet Address**: "What's my wallet address?" or "address"
+- **Transaction History**: "Show my transaction history" or "transactions"
+- **Token Swap**: "Swap 1 USDC to SOL" (supports various token pairs)
+- **Token Prices**: "What's the price of SOL?" or "Show me token prices"
+- **AI Recommendations**: "What tokens do you recommend?" or "Show recommendations"
+- **Help**: "What commands can you help me with?" or "help"
 
 ## Development
 
 ### Key Concepts
 
 - **Server Components**: Utilize React Server Components for improved performance
-- **Streaming**: Implement streaming responses with Vercel AI SDK
-- **Type Safety**: Comprehensive TypeScript types throughout the application
-- **Accessibility**: Focus on keyboard navigation and screen reader support
+- **Solana Integration**: Direct blockchain interaction through the Solana Agent Kit
+- **Rate Limit Handling**: Automatic retry logic for handling RPC rate limits
+- **Chat-Based Interface**: All blockchain interactions available through natural language
 
-### Adding New Features
+### Working with Solana
 
-- **Pages**: Create new directories in `src/app/` with appropriate page files
-- **Components**: Add new components in the relevant subdirectory of `src/components/`
-- **API Routes**: Implement new endpoints in `src/app/api/`
-- **Styling**: Use Tailwind CSS utility classes and Shadcn UI components
-
-## AI Integration
-
-The chat interface is built using the Vercel AI SDK:
+The application uses the Solana Agent Kit (Sendai) for blockchain interactions:
 
 ```typescript
-// Example chat implementation
-'use client';
+// Example for creating Solana tools
+import { createSolanaTools, SolanaAgentKit } from 'solana-agent-kit';
 
-import { useChat } from 'ai/react';
+// Initialize with private key and RPC URL
+const solanaKit = new SolanaAgentKit(
+  privateKeyBase58,
+  process.env.NEXT_PUBLIC_RPC_URL!,
+  {
+    OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+  },
+);
 
-export function TradingAssistant() {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
-    api: '/api/chat',
-    maxSteps: 5,
-  });
-
-  return (
-    <div className='flex flex-col w-full max-w-md py-24 mx-auto stretch'>
-      {/* Messages display */}
-      <form onSubmit={handleSubmit}>
-        <input
-          value={input}
-          placeholder='Ask about trading strategies...'
-          onChange={handleInputChange}
-          className='w-full p-2 border border-gray-300 rounded shadow-xl'
-        />
-      </form>
-    </div>
-  );
-}
+// Create tools for more advanced use cases
+const tools = createSolanaTools(solanaKit);
 ```
 
 ## Deployment
@@ -154,12 +160,14 @@ For production deployment:
 vercel --prod
 ```
 
-## Performance Optimization
+## Error Handling
 
-- Server Components for reduced client-side JavaScript
-- Image optimization with next/image
-- Font optimization with next/font
-- Proper caching strategies with `staleTimes` configuration
+The application includes robust error handling:
+
+- Automatic retry for rate-limited API requests
+- Exponential backoff for retrying blockchain operations
+- User-friendly error messages in the chat interface
+- Fallback mechanisms for when tools are unavailable
 
 ## License
 
