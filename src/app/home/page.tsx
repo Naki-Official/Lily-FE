@@ -1,6 +1,8 @@
 'use client';
 
+import { type Message,useChat } from '@ai-sdk/react';
 import { usePrivy } from '@privy-io/react-auth';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -8,17 +10,81 @@ import { TokenIcon } from '@/components/ui/TokenIcon';
 
 import { tokens } from '@/constant/tokens';
 
+// Add a NoSSR wrapper to prevent the chat component from loading on the server
+const NoSSR = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <>{children}</>
+  );
+};
+
+// Use dynamic import with SSR disabled for chat components
+const DynamicNoSSR = dynamic(() => Promise.resolve(NoSSR), {
+  ssr: false
+});
+
+// Add this component to handle configuration errors at the top of the file, after imports
+const ConfigErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  const [hasConfigError, setHasConfigError] = React.useState(false);
+  const [hasChecked, setHasChecked] = React.useState(false);
+  
+  React.useEffect(() => {
+    // Check if env vars are missing and show error UI - but only once
+    if (!hasChecked) {
+      const checkEnvVars = async () => {
+        try {
+          const response = await fetch('/api/check-config');
+          const data = await response.json();
+          setHasConfigError(!data.isConfigured);
+          setHasChecked(true);
+        } catch (error) {
+          console.error('Error checking config:', error);
+          setHasConfigError(true);
+          setHasChecked(true);
+        }
+      };
+      
+      checkEnvVars();
+    }
+  }, [hasChecked]);
+  
+  if (hasConfigError) {
+    return (
+      <div className="p-8 bg-red-50 rounded-lg border border-red-200 my-4">
+        <h3 className="text-lg font-semibold text-red-600 mb-2">Configuration Error</h3>
+        <p className="text-sm text-red-700 mb-4">
+          The application is missing required environment variables. Please check your .env.local file.
+        </p>
+        <div className="text-sm bg-white p-4 rounded border border-red-100 font-mono">
+          <p>Required variables:</p>
+          <ul className="ml-4 mt-2 list-disc">
+            <li>SOLANA_PRIVATE_KEY</li>
+            <li>RPC_URL or NEXT_PUBLIC_RPC_URL</li>
+            <li>OPENAI_API_KEY</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+};
+
 /**
  * Home page component based on the Figma design
  * Shows a chat interface with Lily AI and navigation to the dashboard
  */
 export default function HomePage() {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy();
   const router = useRouter();
-
+  const userId = user?.id || 'anonymous';
+  
   // User's SOL balance
   const [solBalance, setSolBalance] = React.useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
+
+  // Track if we've already initialized a chat session
+  const [chatInitialized, setChatInitialized] = React.useState(false);
+  const chatSessionId = React.useMemo(() => `${userId}-chat-${Date.now()}`, [userId]);
 
   // Fetch user's SOL balance
   const fetchSolBalance = React.useCallback(async () => {
@@ -30,6 +96,7 @@ export default function HomePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-id': userId
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'balance' }],
@@ -52,56 +119,94 @@ export default function HomePage() {
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [authenticated]);
+  }, [authenticated, userId]);
 
   // Fetch balance when component mounts and user is authenticated
   React.useEffect(() => {
-    if (authenticated) {
-      fetchSolBalance();
+    if (authenticated && !chatInitialized) {
+      setChatInitialized(true);
+      // Don't auto-fetch on load to prevent extra API calls
+      // fetchSolBalance();
     }
-  }, [authenticated, fetchSolBalance]);
+  }, [authenticated, fetchSolBalance, chatInitialized]);
 
-  // Chat state with local storage persistence
-  const [messages, setMessages] = React.useState<
-    Array<{ role: string; content: string; id: string }>
-  >(() => {
-    // Try to load messages from localStorage
-    if (typeof window !== 'undefined') {
-      const savedMessages = localStorage.getItem('lily-chat-history');
-      if (savedMessages) {
-        try {
-          return JSON.parse(savedMessages);
-        } catch (e) {
-          console.error('Failed to parse saved messages:', e);
-        }
-      }
-    }
-
-    // Default initial message
-    return [
+  // Replace the custom chat implementation with the Vercel AI SDK useChat hook
+  const { 
+    messages: aiMessages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading,
+    append,
+    error,
+    setMessages
+  } = useChat({
+    api: '/api/chat',
+    headers: {
+      'x-user-id': userId,
+    },
+    initialMessages: [
       {
+        id: 'welcome-message',
         role: 'assistant',
-        content:
-          "Hello! I'm Lily, your Solana AI assistant. I can help you with:\n\n" +
+        content: "Hello! I'm Lily, your Solana AI assistant. I can help you with:\n\n" +
           '• Checking your wallet balance\n' +
           '• Viewing your wallet address\n' +
           '• Getting token prices\n' +
+          '• Swapping tokens\n' +
           '• Viewing transaction history\n\n' +
           'Try clicking one of the quick action buttons below or type your question.',
-        id: 'welcome-message',
-      },
-    ];
-  });
-
-  // Save messages to localStorage whenever they change
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lily-chat-history', JSON.stringify(messages));
+      }
+    ],
+    // Generate a unique ID to prevent duplicate requests
+    id: chatSessionId,
+    onFinish: (message: Message) => {
+      // Check if we need to update the SOL balance display
+      if (typeof message.content === 'string' && message.content.match(/([0-9.]+)\s*SOL/i)) {
+        const balanceMatch = message.content.match(/([0-9.]+)\s*SOL/i);
+        if (balanceMatch && balanceMatch[1]) {
+          setSolBalance(balanceMatch[1]);
+        }
+      }
+    },
+    onError: (error: Error) => {
+      console.error('Chat API error:', error);
+      // Add a fallback message when the API fails
+      append({
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "I'm sorry, I encountered an error connecting to the Solana blockchain. The development team is working on this issue. Please try again later.",
+      });
     }
-  }, [messages]);
+  });
+  
+  // Store whether we've shown a configuration error
+  const [shownConfigError, setShownConfigError] = React.useState(false);
+  
+  // Handle missing environment variables notice
+  React.useEffect(() => {
+    if (error && !shownConfigError) {
+      setShownConfigError(true);
+      // Show a clear error message and prevent further API calls
+      setMessages(prev => [
+        ...prev.filter(m => !m.id?.startsWith('error-')),
+        {
+          id: `error-config-${Date.now()}`,
+          role: 'assistant',
+          content: "I'm sorry, but I can't connect to the Solana network right now due to missing configuration. Please make sure all environment variables are properly set up."
+        }
+      ]);
+    }
+  }, [error, shownConfigError, setMessages]);
+  
+  // Transform AI SDK messages to match our UI expectations
+  const messages = React.useMemo(() => {
+    return aiMessages.map((msg: Message) => ({
+      ...msg,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }));
+  }, [aiMessages]);
 
-  const [input, setInput] = React.useState('');
-  const [isLoading, setIsLoading] = React.useState(false);
   const [typingDots, setTypingDots] = React.useState(1);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
@@ -127,90 +232,19 @@ export default function HomePage() {
     }
   }, [messages]);
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!input.trim() || isLoading) return;
-
-    // Add user message to chat
-    const userMessage = {
-      role: 'user',
-      content: input,
-      id: Date.now().toString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      // Send message to API
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const data = await response.json();
-
-      // Add AI response to chat
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: data.response,
-          id: Date.now().toString(),
-        },
-      ]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Add error message
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Sorry, there was an error processing your request.',
-          id: Date.now().toString(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Clear chat history
+  // Preserve your clear chat function
   const handleClearChat = () => {
-    const newMessages = [
-      {
-        role: 'assistant',
-        content:
-          "Chat history cleared. I'm Lily, your Solana AI assistant. I can help you with:\n\n" +
-          '• Checking your wallet balance\n' +
-          '• Viewing your wallet address\n' +
-          '• Getting token prices\n' +
-          '• Viewing transaction history\n\n' +
-          'Try clicking one of the quick action buttons below or type your question.',
-        id: `welcome-${Date.now()}`,
-      },
-    ];
-
-    setMessages(newMessages);
-
-    // Also clear from localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lily-chat-history', JSON.stringify(newMessages));
-    }
+    // Display a clear message then reload the page to reset the chat
+    append({
+      role: 'assistant',
+      content: "Chat history will be cleared.",
+      id: `clear-message-${Date.now()}`,
+    });
+    
+    // Reload the page after a short delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   // Get user's wallet address or use email as fallback
@@ -251,8 +285,14 @@ export default function HomePage() {
     router.push('/dashboard');
   };
 
-  const handleLogout = () => {
-    // In a real app, this would log the user out
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Router will handle redirect based on authentication state
+      router.push('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   if (!ready || !authenticated) {
@@ -391,74 +431,115 @@ export default function HomePage() {
                   </h2>
                 </div>
 
-                {/* Display messages */}
-                <div className='space-y-4'>
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                          message.role === 'user'
-                            ? 'bg-[#007AFF] text-white'
-                            : 'bg-[#F2F2F7] text-[#162D3A]'
-                        }`}
-                      >
-                        <p className='font-sf-pro text-base whitespace-pre-wrap'>
-                          {message.content}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className='flex justify-start'>
-                      <div className='max-w-[80%] rounded-2xl px-4 py-3 bg-[#F2F2F7] text-[#162D3A]'>
-                        <div className='flex items-center space-x-2'>
-                          <div className='h-6 w-6 rounded-full bg-[#007AFF] flex items-center justify-center'>
-                            <svg
-                              width='12'
-                              height='12'
-                              viewBox='0 0 24 24'
-                              fill='none'
-                              xmlns='http://www.w3.org/2000/svg'
-                            >
-                              <path
-                                d='M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z'
-                                fill='white'
-                              />
-                            </svg>
+                {/* Config error boundary */}
+                <ConfigErrorBoundary>
+                  {/* Display messages */}
+                  <DynamicNoSSR>
+                    <div className='h-[calc(100vh-400px)] overflow-y-auto mb-4'>
+                      <div className='space-y-6'>
+                        {messages.map((message: Message & { content: string }) => (
+                          <div key={message.id}>
+                            {message.role === 'user' ? (
+                              <div className='flex justify-end'>
+                                <div className='max-w-[80%] rounded-2xl px-4 py-3 bg-[#007AFF] text-white'>
+                                  <p className='font-sf-pro text-sm'>{message.content}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className='flex justify-start'>
+                                <div className='max-w-[80%] rounded-2xl px-4 py-3 bg-[#F2F2F7] text-[#162D3A]'>
+                                  <div className='flex items-center space-x-2 mb-2'>
+                                    <div className='h-6 w-6 rounded-full bg-[#007AFF] flex items-center justify-center'>
+                                      <svg
+                                        width='12'
+                                        height='12'
+                                        viewBox='0 0 24 24'
+                                        fill='none'
+                                        xmlns='http://www.w3.org/2000/svg'
+                                      >
+                                        <path
+                                          d='M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z'
+                                          fill='white'
+                                        />
+                                      </svg>
+                                    </div>
+                                    <p className='font-sf-pro text-sm text-[#8A8A8E]'>Lily</p>
+                                  </div>
+                                  <p className='font-sf-pro text-sm whitespace-pre-wrap'>
+                                    {message.content}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <p className='font-sf-pro text-sm text-[#8A8A8E]'>
-                            Lily is typing
-                            {'.'.repeat(typingDots)}
-                          </p>
-                        </div>
+                        ))}
+                        
+                        {/* Error message if API calls fail */}
+                        {error && !messages.some((m: { id?: string }) => m.id?.startsWith('error-')) && (
+                          <div className='flex justify-start'>
+                            <div className='max-w-[80%] rounded-2xl px-4 py-3 bg-[#FFEBE9] text-[#FF3B30]'>
+                              <div className='flex items-center space-x-2 mb-2'>
+                                <div className='h-6 w-6 rounded-full bg-[#FF3B30] flex items-center justify-center'>
+                                  <svg
+                                    width='12'
+                                    height='12'
+                                    viewBox='0 0 24 24'
+                                    fill='none'
+                                    xmlns='http://www.w3.org/2000/svg'
+                                  >
+                                    <path
+                                      d='M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z'
+                                      fill='white'
+                                    />
+                                  </svg>
+                                </div>
+                                <p className='font-sf-pro text-sm text-[#FF3B30]'>Error</p>
+                              </div>
+                              <p className='font-sf-pro text-sm'>
+                                Connection to Solana blockchain failed. Please try again later.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {isLoading && (
+                          <div className='flex justify-start'>
+                            <div className='max-w-[80%] rounded-2xl px-4 py-3 bg-[#F2F2F7] text-[#162D3A]'>
+                              <div className='flex items-center space-x-2'>
+                                <div className='h-6 w-6 rounded-full bg-[#007AFF] flex items-center justify-center'>
+                                  <svg
+                                    width='12'
+                                    height='12'
+                                    viewBox='0 0 24 24'
+                                    fill='none'
+                                    xmlns='http://www.w3.org/2000/svg'
+                                  >
+                                    <path
+                                      d='M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z'
+                                      fill='white'
+                                    />
+                                  </svg>
+                                </div>
+                                <p className='font-sf-pro text-sm text-[#8A8A8E]'>
+                                  Lily is typing
+                                  {'.'.repeat(typingDots)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={messagesEndRef} />
                       </div>
                     </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+                  </DynamicNoSSR>
+                </ConfigErrorBoundary>
               </div>
 
               {/* Quick action buttons */}
               <div className='mb-4 flex flex-wrap gap-2'>
                 <button
                   type='button'
-                  onClick={() => {
-                    setInput("What's my wallet balance?");
-                    // Submit the form programmatically after setting the input
-                    setTimeout(() => {
-                      const form = document.querySelector('form');
-                      if (form)
-                        form.dispatchEvent(
-                          new Event('submit', {
-                            cancelable: true,
-                            bubbles: true,
-                          }),
-                        );
-                    }, 100);
-                  }}
+                  onClick={() => append({ role: 'user', content: "What's my wallet balance?" })}
                   className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
                   disabled={isLoading}
                 >
@@ -466,19 +547,7 @@ export default function HomePage() {
                 </button>
                 <button
                   type='button'
-                  onClick={() => {
-                    setInput("What's my wallet address?");
-                    setTimeout(() => {
-                      const form = document.querySelector('form');
-                      if (form)
-                        form.dispatchEvent(
-                          new Event('submit', {
-                            cancelable: true,
-                            bubbles: true,
-                          }),
-                        );
-                    }, 100);
-                  }}
+                  onClick={() => append({ role: 'user', content: "What's my wallet address?" })}
                   className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
                   disabled={isLoading}
                 >
@@ -486,19 +555,7 @@ export default function HomePage() {
                 </button>
                 <button
                   type='button'
-                  onClick={() => {
-                    setInput('Show my transaction history');
-                    setTimeout(() => {
-                      const form = document.querySelector('form');
-                      if (form)
-                        form.dispatchEvent(
-                          new Event('submit', {
-                            cancelable: true,
-                            bubbles: true,
-                          }),
-                        );
-                    }, 100);
-                  }}
+                  onClick={() => append({ role: 'user', content: "Show my transaction history" })}
                   className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
                   disabled={isLoading}
                 >
@@ -506,19 +563,7 @@ export default function HomePage() {
                 </button>
                 <button
                   type='button'
-                  onClick={() => {
-                    setInput('What commands can you help me with?');
-                    setTimeout(() => {
-                      const form = document.querySelector('form');
-                      if (form)
-                        form.dispatchEvent(
-                          new Event('submit', {
-                            cancelable: true,
-                            bubbles: true,
-                          }),
-                        );
-                    }, 100);
-                  }}
+                  onClick={() => append({ role: 'user', content: "What commands can you help me with?" })}
                   className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
                   disabled={isLoading}
                 >
@@ -526,23 +571,19 @@ export default function HomePage() {
                 </button>
                 <button
                   type='button'
-                  onClick={() => {
-                    setInput('Show me token prices');
-                    setTimeout(() => {
-                      const form = document.querySelector('form');
-                      if (form)
-                        form.dispatchEvent(
-                          new Event('submit', {
-                            cancelable: true,
-                            bubbles: true,
-                          }),
-                        );
-                    }, 100);
-                  }}
+                  onClick={() => append({ role: 'user', content: "Show me token prices" })}
                   className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
                   disabled={isLoading}
                 >
                   Token Prices
+                </button>
+                <button
+                  type='button'
+                  onClick={() => append({ role: 'user', content: "I want to swap 0.1 SOL to USDC" })}
+                  className='rounded-full bg-[#F2F2F7] px-4 py-2 text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors'
+                  disabled={isLoading}
+                >
+                  Swap Tokens
                 </button>
                 <button
                   type='button'
@@ -556,7 +597,7 @@ export default function HomePage() {
 
               {/* Token quick access */}
               {messages.some(
-                (msg) =>
+                (msg: { role: string; content: string }) =>
                   msg.role === 'assistant' &&
                   typeof msg.content === 'string' &&
                   msg.content.includes('Here are the current token prices'),
@@ -570,19 +611,7 @@ export default function HomePage() {
                       <button
                         key={token}
                         type='button'
-                        onClick={() => {
-                          setInput(`What's the price of ${token}?`);
-                          setTimeout(() => {
-                            const form = document.querySelector('form');
-                            if (form)
-                              form.dispatchEvent(
-                                new Event('submit', {
-                                  cancelable: true,
-                                  bubbles: true,
-                                }),
-                              );
-                          }, 100);
-                        }}
+                        onClick={() => append({ role: 'user', content: `What's the price of ${token}?` })}
                         className='rounded-full bg-[#E0F2FF] px-3 py-1 text-xs font-medium text-[#007AFF] hover:bg-[#B8E2FF] transition-colors'
                         disabled={isLoading}
                       >
@@ -598,7 +627,7 @@ export default function HomePage() {
                 <input
                   type='text'
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => handleInputChange(e)}
                   placeholder="What's on your mind?"
                   className='w-full rounded-full border border-[#E5E5EA] bg-[#F9F9F9] px-6 py-4 pr-16 text-[#162D3A] focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent'
                   disabled={isLoading}

@@ -1,11 +1,32 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
-import bs58 from 'bs58';
-import { NextResponse } from 'next/server';
 import { createSolanaTools, SolanaAgentKit } from 'solana-agent-kit';
 
 import { fetchTopRecommendedCoins, TopCoin } from '@/lib/api';
-import prisma from '@/lib/prisma';
+
+// Export config for API route
+export const maxDuration = 60; // Increase timeout for Sendai operations
+
+// Initialize Solana Agent Kit with the provided private key and RPC URL
+function initSolanaAgentKit(privateKey: string, rpcUrl: string): SolanaAgentKit {
+  try {
+    console.log('Initializing Solana Agent Kit with provided credentials');
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    
+    if (!openaiApiKey) {
+      throw new Error('Missing OpenAI API key');
+    }
+    
+    return new SolanaAgentKit(
+      privateKey,
+      rpcUrl,
+      openaiApiKey
+    );
+  } catch (error) {
+    console.error('Failed to initialize Solana Agent Kit:', error);
+    throw new Error(`Failed to initialize Solana Agent Kit: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 // Mock transaction data (in a real app, this would come from the blockchain)
 const mockTransactions = [
@@ -226,46 +247,6 @@ let coinGeckoIdsCache: Record<string, string> | null = null;
 let lastCacheTime = 0;
 const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 
-// Initialize Solana Agent Kit with proper configuration
-// We create it outside the handler to reuse the same instance, but with error handling
-let solanaKit: SolanaAgentKit | null = null;
-
-try {
-  const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY;
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
-  
-  if (privateKeyBase58 && rpcUrl) {
-    // Validate the private key format
-    try {
-      const decodedPrivateKey = bs58.decode(privateKeyBase58);
-      if (decodedPrivateKey.length !== 64) {
-        console.warn('Invalid Solana private key length. It should be 64 bytes.');
-      }
-      
-      // Create the Solana Agent Kit instance with all available API keys
-      solanaKit = new SolanaAgentKit(
-        privateKeyBase58,
-        rpcUrl,
-        {
-          OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-          COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY,
-        },
-      );
-      
-      console.log('Solana Agent Kit initialized successfully');
-    } catch (error) {
-      console.error('Error initializing Solana Agent Kit:', error);
-    }
-  } else {
-    console.warn('Missing Solana configuration. NEXT_PUBLIC_SOLANA_PRIVATE_KEY or NEXT_PUBLIC_RPC_URL not set.');
-  }
-} catch (error) {
-  console.error('Error in Solana Agent Kit setup:', error);
-}
-
-// Create LangChain tools if SolanaAgentKit is available
-const tools = solanaKit ? createSolanaTools(solanaKit) : [];
-
 // Helper function to get token prices from CoinGecko API
 async function getTokenPrices(tokenSymbols: string[]): Promise<Record<string, TokenPriceData> | null> {
   try {
@@ -402,90 +383,139 @@ async function getTopRecommendedCoins(): Promise<TopCoin[]> {
   return topCoinsCache || [];
 }
 
-// Initialize Solana Agent Kit with environment variables
+// Update the POST handler to utilize Sendai for blockchain operations
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const messages = body.messages as Message[];
+    console.log('Chat API called');
     
-    if (!Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Invalid message format. Expected an array of messages.' },
-        { status: 400 }
+    // Add response cache headers to prevent retries
+    const headers = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, max-age=0',
+    };
+    
+    // Extract request information
+    const { messages } = await req.json();
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          role: 'assistant',
+          content: "I need a message to respond to. Please try again with a question.",
+          id: `error-${Date.now()}`
+        }),
+        { status: 200, headers }
       );
     }
     
-    // Extract user ID from request headers
-    const userId = req.headers.get('x-user-id') || 'anonymous';
-
-    // Try to save conversation to database, but don't let errors stop the main flow
-    if (process.env.DATABASE_URL) {
-      try {
-        // Check if database connection is available - but wrap in a try/catch
-        await prisma.$connect().catch((err: Error) => {
-          console.warn('Failed to connect to database:', err.message);
-        });
-        
-        // Only attempt to create a conversation if we have a valid Conversation model
-        if (prisma.conversation) {
-          await prisma.conversation.create({
-            data: {
-              userId,
-              messages: JSON.stringify(messages),
-              timestamp: new Date(),
-            },
-          }).catch((err: Error) => {
-            console.warn('Failed to save conversation:', err.message);
-          });
-          
-          console.log('Conversation saved to database');
-        } else {
-          console.warn('prisma.conversation is undefined. Make sure your Prisma schema is properly set up and the client has been generated.');
-        }
-      } catch (dbError) {
-        console.error('Error in database operations:', dbError);
-        // Continue execution even if database operations fail
-      } finally {
-        // Try to disconnect, but don't let errors stop the flow
-        try {
-          await prisma.$disconnect().catch(() => {});
-        } catch (e) {
-          // Ignore disconnect errors
-        }
-      }
-    } else {
-      console.log('DATABASE_URL not set, skipping database operations');
+    // Get user ID from headers for personalization
+    const reqHeaders = new Headers(req.headers);
+    const userId = reqHeaders.get('x-user-id') || 'anonymous';
+    console.log('Request for user:', userId);
+    
+    // Get Solana configuration from environment variables
+    const privateKey = process.env.SOLANA_PRIVATE_KEY;
+    const rpcUrl = process.env.RPC_URL || process.env.NEXT_PUBLIC_RPC_URL;
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    
+    // Handle missing configuration with clear error message
+    if (!privateKey || !rpcUrl || !openaiApiKey) {
+      console.warn('Missing required configuration:', {
+        hasPrivateKey: !!privateKey,
+        hasRpcUrl: !!rpcUrl,
+        hasOpenAIKey: !!openaiApiKey
+      });
+      
+      // Return a graceful error response instead of throwing
+      return new Response(
+        JSON.stringify({ 
+          role: 'assistant',
+          content: "I'm sorry, but I can't connect to the Solana network right now due to missing configuration. Please try again later.",
+          id: `error-${Date.now()}`
+        }),
+        { status: 200, headers }
+      );
     }
-
-    // Pre-fetch top recommended coins for the AI to use in its responses
-    // Use a try/catch to prevent errors from stopping the main flow
+    
+    // Attempt to initialize Solana kit with proper error handling
+    let solanaKit;
+    try {
+      console.log('Initializing Solana Agent Kit');
+      solanaKit = initSolanaAgentKit(privateKey, rpcUrl);
+    } catch (error) {
+      console.error('Failed to initialize Solana Agent Kit:', error);
+      
+      // Return a graceful error response
+      return new Response(
+        JSON.stringify({ 
+          role: 'assistant',
+          content: "I'm sorry, but I couldn't initialize the Solana tools. Please try again later.",
+          id: `error-${Date.now()}`
+        }),
+        { 
+          status: 200, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Proceed with the rest of the code only if initialization succeeded
+    // Create and prepare Solana tools for the AI
+    const solanaTools = createSolanaTools(solanaKit);
+    
+    // Convert tools array to an object format that Vercel AI SDK expects
+    const toolsObj = {};
+    solanaTools.forEach(tool => {
+      if (tool && tool.name && typeof tool.invoke === 'function') {
+        // @ts-expect-error - We know this is the correct format for Vercel AI SDK
+        toolsObj[tool.name] = async (...args) => {
+          try {
+            // @ts-expect-error - We know this is the correct format for tool invocation
+            return await tool.invoke(...args);
+          } catch (toolError: unknown) {
+            const errorMessage = toolError instanceof Error ? toolError.message : String(toolError);
+            console.error(`Error invoking tool ${tool.name}:`, toolError);
+            return `Error executing ${tool.name}: ${errorMessage}`;
+          }
+        };
+      }
+    });
+    
+    // Pre-fetch top recommended coins for the AI to use
     let topCoins: TopCoin[] = [];
     try {
+      console.log('Fetching top recommended coins');
       topCoins = await getTopRecommendedCoins();
     } catch (error) {
       console.warn('Failed to fetch top coins:', error);
       // Continue with empty array
     }
 
-    // Prepare the conversation for AI processing
-    // The Vercel AI SDK expects messages to conform to specific format
-    const aiMessages = messages.map(msg => ({
+    // Prepare the AIMessages with user query
+    const aiMessages = messages.map((msg: Message) => ({
       role: msg.role,
       content: msg.content,
     }));
 
     // Add system message for Sendai agent
-    const systemMessageContent = `You are Sendai, an expert AI assistant specializing in Solana blockchain and cryptocurrency trading. 
-    Use your knowledge to provide helpful, accurate information about Solana, tokens, trading, and crypto markets.
-    The user's portfolio data, trading history, and preferences are stored in the database and can be used to provide personalized advice.
-    
+    const systemMessageContent = `You are Lily, an expert AI assistant specializing in Solana blockchain and cryptocurrency trading,
+    powered by Sendai. You can interact with the Solana blockchain to perform various operations.
+
+    Your capabilities include:
+    - Checking wallet balances
+    - Viewing wallet addresses
+    - Getting token prices
+    - Trading and swapping tokens 
+    - Viewing transaction history
+    - Providing personalized investment advice
+
     ${topCoins.length > 0 
       ? `Top Recommended Coins: ${topCoins.map(coin => 
           `${coin.token.name} (${coin.token.ticker}) - Score: ${coin.finalScore.toFixed(2)} - Price: $${coin.token.tokenPrice.toFixed(6)} - Change: ${coin.token.tokenPriceChangePercent.toFixed(2)}%`
         ).join(', ')}`
       : 'Top coin recommendations are currently being fetched from our analysis engine.'
     }
-    
+
+    When the user asks about blockchain operations, use your available tools to perform them.
     Always be professional, concise, and focused on delivering value to the user.`;
 
     const systemMessage = {
@@ -493,31 +523,43 @@ export async function POST(req: Request) {
       content: systemMessageContent
     };
 
-    // Use the streamText method for streaming responses
-    try {
-      const result = await streamText({
-        model: openai('gpt-4-turbo'),
-        messages: [systemMessage, ...aiMessages],
-      });
-
-      return result.toDataStreamResponse();
-    } catch (streamError) {
-      console.error('Error streaming response:', streamError);
-      
-      // Fallback to non-streaming response if streaming fails
-      try {
-        return NextResponse.json({
-          id: 'fallback-response',
-          role: 'assistant',
-          content: 'I apologize, but I encountered an issue processing your request. Please try again in a moment.',
-        });
-      } catch (fallbackError) {
-        console.error('Error in fallback response:', fallbackError);
-        return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
-      }
-    }
-  } catch (error) {
+    console.log('Streaming response with available tools');
+    
+    // Stream the text response using Vercel AI SDK and Sendai
+    const text = await streamText({
+      model: openai('gpt-4o'),
+      system: systemMessage.content,
+      messages: aiMessages,
+      tools: toolsObj,
+      temperature: 0.7,
+      maxTokens: 500,
+    });
+    
+    // Add headers to prevent caching and infinite retries
+    const response = text.toDataStreamResponse();
+    
+    // Add cache control headers to prevent infinite loops
+    response.headers.set('Cache-Control', 'no-store, private, max-age=0');
+    response.headers.set('X-Session-Id', `${Date.now()}`);
+    
+    return response;
+  } catch (error: unknown) {
     console.error('Error in chat route:', error);
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+    
+    // Construct a response that won't cause an infinite retry loop
+    return new Response(
+      JSON.stringify({
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "I'm sorry, I encountered an error processing your request. Please try again later."
+      }),
+      {
+        status: 200, // Return 200 to prevent retries
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, private, max-age=0'
+        }
+      }
+    );
   }
 }

@@ -29,8 +29,20 @@ const nextConfig = {
 
   transpilePackages: ['ai'],
   experimental: {
-    serverActions: true,
     externalDir: true,
+  },
+
+  // Increase timeouts for API routes that use Sendai for blockchain operations
+  api: {
+    responseLimit: '8mb',
+    bodyParser: {
+      sizeLimit: '2mb',
+    },
+  },
+
+  // Increase timeout for Vercel deployments
+  serverRuntimeConfig: {
+    maxDuration: 60, // Timeout in seconds
   },
 
   webpack(config) {
