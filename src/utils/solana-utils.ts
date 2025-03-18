@@ -7,36 +7,51 @@
 export async function initSolanaKit() {
   try {
     // Dynamic imports to avoid build-time errors
-    const bs58 = await import('bs58');
+    const bs58Module = await import('bs58');
+    const bs58 = bs58Module.default;
     const { SolanaAgentKit, createSolanaTools } = await import('solana-agent-kit');
     
-    // Get environment variables
-    const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || '';
-    let validKey = privateKeyBase58;
+    // Get environment variables - safely
+    const privateKeyBase58 = typeof process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY === 'string' 
+      ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY 
+      : '';
+    
+    let validKey = 'placeholder'; // Use placeholder as the default to prevent decode attempts on empty strings
     
     try {
-      if (!privateKeyBase58) {
-        console.error("Solana private key is missing or empty");
-        validKey = 'placeholder';
-      } else {
-        const decodedPrivateKey = bs58.default.decode(privateKeyBase58);
-        if (decodedPrivateKey.length !== 64) {
-          console.error("Invalid Solana private key length. It should be 64 bytes.");
-          validKey = 'placeholder';
+      // Only attempt to decode if the key is a non-empty string
+      if (privateKeyBase58 && privateKeyBase58.trim().length > 0) {
+        // Safely decode the private key
+        try {
+          const decodedPrivateKey = bs58.decode(privateKeyBase58);
+          if (decodedPrivateKey.length === 64) {
+            // Valid key, use it
+            validKey = privateKeyBase58;
+          } else {
+            console.error("Invalid Solana private key length. It should be 64 bytes.");
+          }
+        } catch (decodeError) {
+          console.error("Error decoding private key:", decodeError);
         }
+      } else {
+        console.error("Solana private key is missing or empty");
       }
     } catch (keyError) {
-      console.error("Error decoding private key:", keyError);
-      validKey = 'placeholder';
+      console.error("Error processing private key:", keyError);
     }
+    
+    // Ensure we have a non-empty RPC URL
+    const rpcUrl = typeof process.env.NEXT_PUBLIC_RPC_URL === 'string' && process.env.NEXT_PUBLIC_RPC_URL
+      ? process.env.NEXT_PUBLIC_RPC_URL
+      : 'https://api.mainnet-beta.solana.com';
     
     // Create the kit with the validated key
     const solanaKit = new SolanaAgentKit(
       validKey,
-      process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com',
+      rpcUrl,
       {
-        OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-        COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY,
+        OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+        COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY || '',
       }
     );
     

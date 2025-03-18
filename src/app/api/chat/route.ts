@@ -1,9 +1,7 @@
-import bs58 from 'bs58';
 import { NextResponse } from 'next/server';
-import { SolanaAgentKit } from 'solana-agent-kit';
 
 // Mock transaction data (in a real app, this would come from the blockchain)
-const mockTransactions = [
+const _mockTransactions = [
   { 
     id: 'tx1', 
     type: 'Send', 
@@ -199,44 +197,6 @@ const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 // Cache for CoinGecko IDs to avoid repeated API calls
 let coinGeckoIdsCache: Record<string, string> | null = null;
 let lastCacheTime = 0;
-
-// Helper function to safely initialize SolanaKit
-function initSolanaKit() {
-  try {
-    const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || '';
-    let validKey = privateKeyBase58;
-
-    try {
-      if (!privateKeyBase58) {
-        console.error("Solana private key is missing or empty");
-        validKey = 'placeholder';
-      } else {
-        const decodedPrivateKey = bs58.decode(privateKeyBase58);
-        if (decodedPrivateKey.length !== 64) {
-          console.error("Invalid Solana private key length. It should be 64 bytes.");
-          validKey = 'placeholder';
-        }
-      }
-    } catch (error) {
-      console.error("Error decoding private key:", error);
-      validKey = 'placeholder';
-    }
-
-    const kit = new SolanaAgentKit(
-      validKey,
-      process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com',
-      {
-        OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-        COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY,
-      }
-    );
-
-    return kit;
-  } catch (error) {
-    console.error("Failed to initialize SolanaKit:", error);
-    return null;
-  }
-}
 
 // Helper function to get token prices from CoinGecko API
 async function getTokenPrices(tokenSymbols: string[]) {
