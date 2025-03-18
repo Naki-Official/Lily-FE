@@ -1,7 +1,5 @@
 // This file can be run with ts-node scripts/setup-db.ts
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../src/lib/prisma';
 
 async function main() {
   console.log('Setting up database...');
