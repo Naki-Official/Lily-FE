@@ -35,6 +35,7 @@ export default function HomePage() {
         try {
           return JSON.parse(savedMessages);
         } catch (e) {
+          // eslint-disable-next-line no-console
           console.error('Failed to parse saved messages:', e);
         }
       }
@@ -165,6 +166,7 @@ export default function HomePage() {
         { role: 'assistant', content: data.response, id: Date.now().toString() },
       ]);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error sending message:', error);
       // Add error message
       setMessages((prev) => [
@@ -205,7 +207,7 @@ export default function HomePage() {
   };
   
   // Get user's wallet address or use email as fallback
-  const userDisplayName = React.useMemo(() => {
+  const _userDisplayName = React.useMemo(() => {
     if (!user) return '';
     
     // Check if user has linked wallets
@@ -281,6 +283,7 @@ export default function HomePage() {
         setSolBalance(balanceMatch[1]);
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error fetching SOL balance:', error);
     } finally {
       setIsLoadingBalance(false);
@@ -315,6 +318,7 @@ export default function HomePage() {
         setWalletAddress(fullAddress);
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error fetching wallet address:', error);
     }
   }, [authenticated]);
@@ -345,7 +349,7 @@ export default function HomePage() {
         id: 'welcome-message'
       }]);
     }
-  }, []);
+  }, [messages]);
 
   if (!ready || !authenticated) {
     return (

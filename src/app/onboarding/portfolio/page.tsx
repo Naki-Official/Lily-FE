@@ -1,12 +1,13 @@
 'use client';
 
-import { usePrivy } from '@privy-io/react-auth';
-import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { usePrivy } from '@privy-io/react-auth';
+
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
 export default function PortfolioPage() {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user: _user } = usePrivy();
   const router = useRouter();
 
   // Redirect to auth page if not authenticated

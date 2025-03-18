@@ -213,7 +213,7 @@ try {
 }
 
 // Create the Solana Agent Kit instance with all available API keys
-export const solanaKit = new SolanaAgentKit(
+const solanaKit = new SolanaAgentKit(
   privateKeyBase58,
   process.env.NEXT_PUBLIC_RPC_URL!,
   {

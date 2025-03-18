@@ -33,6 +33,7 @@ export default function AuthUI() {
       setIsLoading(true);
       await login();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Login failed:', error);
       setIsLoading(false);
     }

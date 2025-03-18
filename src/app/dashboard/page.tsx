@@ -15,7 +15,7 @@ import { tokens } from '@/constant/tokens';
 export default function DashboardPage() {
   const { ready, authenticated, user, logout } = usePrivy();
   const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [_isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   // Get user's wallet address or use email as fallback
   const userDisplayName = React.useMemo(() => {
@@ -62,9 +62,11 @@ export default function DashboardPage() {
     try {
       setIsLoggingOut(true);
       await logout();
-      // Router will handle redirect based on authentication state
+      router.push('/auth');
+      // eslint-disable-next-line no-console
+      console.log('User logged out');
     } catch (error) {
-      console.error('Logout failed:', error);
+      // Handle logout error
     } finally {
       setIsLoggingOut(false);
     }

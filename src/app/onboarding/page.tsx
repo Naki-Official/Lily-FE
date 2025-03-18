@@ -7,7 +7,7 @@ import * as React from 'react';
 type TradingGoal = 'high-growth' | 'moderate-growth' | 'low-volatility';
 
 export default function OnboardingPage() {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user: _user } = usePrivy();
   const router = useRouter();
   const [selectedGoal, setSelectedGoal] = React.useState<TradingGoal | null>(null);
 

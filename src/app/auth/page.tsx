@@ -6,7 +6,7 @@ import * as React from 'react';
 import AuthUI from '@/components/auth/AuthUI';
 
 export default function AuthPage() {
-  const router = useRouter();
+  const _router = useRouter();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#F0F1F2] p-4">

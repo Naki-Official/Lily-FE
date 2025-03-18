@@ -47,7 +47,7 @@ export default function TradePage() {
     }
   }, [ready, authenticated, router]);
 
-  const handlePortfolioClick = () => {
+  const _handlePortfolioClick = () => {
     router.push('/dashboard/portfolio');
   };
 
