@@ -9,6 +9,29 @@ import * as React from 'react';
  * Enhanced with accessibility features, loading state, and responsive design
  */
 export default function AuthUI() {
+  // Detect build/SSG environment
+  const isServer = typeof window === 'undefined';
+  const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
+  
+  // If we're in a build environment, render a static version without hooks
+  if (isBuildTime) {
+    return (
+      <div className="flex flex-col space-y-4">
+        <button
+          className="relative w-full rounded-xl bg-[#162D3A] px-6 py-4 text-center font-sf-compact text-xl font-semibold tracking-wide text-white"
+          disabled
+        >
+          Sign in with Privy
+        </button>
+        
+        <p className="text-center text-sm text-gray-500">
+          By signing in, you agree to our <a href="#" className="text-blue-600">Terms of Service</a> and <a href="#" className="text-blue-600">Privacy Policy</a>.
+        </p>
+      </div>
+    );
+  }
+  
+  // Runtime version with full functionality
   const { authenticated, ready } = usePrivy();
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
