@@ -430,89 +430,7 @@ export async function POST(req: Request) {
     console.log('Using user provided key:', !!privateKey);
     console.log('User wallet address available:', !!walletAddress);
     
-    // If wallet address is provided but we don't have a private key, use it for commands
-    // that only need the address (balance, transaction history, etc.)
-    if (walletAddress && !privateKey && (!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
-      console.log('Using wallet address only mode (no private key)');
-      
-      if (userMessage.includes('address')) {
-        return NextResponse.json({ 
-          response: `Your wallet address is ${walletAddress}` 
-        });
-      }
-      
-      // For other commands, we need to explain that certain operations require the private key
-      // Handle different commands with appropriate responses
-      if (userMessage.includes('balance')) {
-        return NextResponse.json({
-          response: "I can see your wallet address, but I need additional permissions to check your balance. Please use the 'Connect Wallet' button to grant full access."
-        });
-      }
-      
-      if (userMessage.includes('transaction') || userMessage.includes('history')) {
-        return NextResponse.json({
-          response: "I can see your wallet address, but I need additional permissions to view your transaction history. Please use the 'Connect Wallet' button to grant full access."
-        });
-      }
-      
-      if (userMessage.includes('swap')) {
-        return NextResponse.json({
-          response: "I can see your wallet address, but I need additional permissions to perform swaps. Please use the 'Connect Wallet' button to grant full access."
-        });
-      }
-    }
-    
-    // Special handling for Vercel without proper environment variables and no user key
-    if (isVercel && (!privateKey && !process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
-      console.log('Running on Vercel with missing private key');
-      
-      // Add debugging information
-      const debugInfo = {
-        isVercel,
-        hasPrivateKey: !!privateKey,
-        privateKeyLength: privateKey ? privateKey.length : 0,
-        hasEnvKey: !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY,
-        envKeyLength: process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.length : 0,
-        hasSolanaKit: !!solanaKit,
-        hasWalletAddress: !!walletAddress,
-        userMessage
-      };
-      console.log('Debug info:', debugInfo);
-      
-      // Handle different commands even when we don't have a private key
-      if (userMessage.includes('address')) {
-        if (walletAddress) {
-          return NextResponse.json({ 
-            response: `Your wallet address is ${walletAddress}` 
-          });
-        }
-        
-        return NextResponse.json({ 
-          response: "You need to connect your wallet first to access wallet address information. Please click the 'Connect Wallet' button at the top of the page." 
-        });
-      }
-      
-      if (userMessage.includes('balance')) {
-        return NextResponse.json({
-          response: "You need to connect your wallet first to access wallet balance information. Please click the 'Connect Wallet' button at the top of the page."
-        });
-      }
-      
-      if (userMessage.includes('price') || userMessage.includes('token price')) {
-        // Token price queries don't need wallet access, so we can still handle them
-        return NextResponse.json({
-          response: await getTokenPrices(userMessage)
-        });
-      }
-      
-      // If we need more specific error messages for other commands, add them here
-      // Default to a generic response if no specific handlers
-      return NextResponse.json({
-        response: "I'm unable to access your wallet information at the moment. Please click the 'Connect Wallet' button at the top of the page."
-      });
-    }
-    
-    // First, determine the user's intent
+    // Determine the user's intent early
     const intentPatterns = [
       { intent: 'balance', patterns: [/balance/i, /how much sol/i, /how many sol/i] },
       { intent: 'address', patterns: [/wallet/i, /address/i] },
@@ -534,6 +452,133 @@ export async function POST(req: Request) {
         }
       }
       if (detectedIntent) break;
+    }
+    
+    // If wallet address is provided but we don't have a private key, use it for commands
+    // that only need the address (balance, transaction history, etc.)
+    if (walletAddress && !privateKey && (!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
+      console.log('Using wallet address only mode (no private key)');
+      
+      if (userMessage.includes('address')) {
+        return NextResponse.json({ 
+          response: `Your wallet address is ${walletAddress}` 
+        });
+      }
+    }
+    
+    // Special handling for Vercel without proper environment variables and no user key
+    if (isVercel && (!privateKey && !process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
+      console.log('Running on Vercel with missing private key');
+      
+      // Add debugging information
+      const debugInfo = {
+        isVercel,
+        hasPrivateKey: !!privateKey,
+        privateKeyLength: privateKey ? privateKey.length : 0,
+        hasEnvKey: !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY,
+        envKeyLength: process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.length : 0,
+        hasSolanaKit: !!solanaKit,
+        hasWalletAddress: !!walletAddress,
+        userMessage,
+        detectedIntent
+      };
+      console.log('Debug info:', debugInfo);
+      
+      // Handle wallet-specific commands
+      if (userMessage.includes('address')) {
+        if (walletAddress) {
+          return NextResponse.json({ 
+            response: `Your wallet address is ${walletAddress}` 
+          });
+        }
+        
+        return NextResponse.json({ 
+          response: "I don't have access to your wallet address at the moment." 
+        });
+      }
+      
+      if (userMessage.includes('balance')) {
+        return NextResponse.json({
+          response: "I don't have access to your wallet balance at the moment."
+        });
+      }
+      
+      // These commands don't need wallet access
+      if (userMessage.includes('price') || userMessage.includes('token')) {
+        try {
+          const priceData = await getTokenPrices(userMessage);
+          
+          // Convert the price data to a formatted string response
+          if (priceData && Object.keys(priceData).length > 0) {
+            if (Object.keys(priceData).length === 1) {
+              // Single token price
+              const [token, data] = Object.entries(priceData)[0];
+              const price = token === 'BONK' ? data.price.toFixed(8) : data.price.toFixed(4);
+              const changeSign = data.change >= 0 ? '+' : '';
+              return NextResponse.json({
+                response: `Current ${token} price: $${price} (${changeSign}${data.change.toFixed(2)}% in 24h)`
+              });
+            } else {
+              // Multiple token prices
+              const pricesFormatted = Object.entries(priceData)
+                .map(([token, data]) => {
+                  const price = token === 'BONK' ? data.price.toFixed(8) : data.price.toFixed(4);
+                  const changeSign = data.change >= 0 ? '+' : '';
+                  return `- ${token}: $${price} (${changeSign}${data.change.toFixed(2)}%)`;
+                })
+                .join('\n');
+              
+              return NextResponse.json({
+                response: `Here are the current token prices:\n\n${pricesFormatted}`
+              });
+            }
+          } else {
+            return NextResponse.json({
+              response: "I couldn't retrieve token prices at the moment. The API may be unavailable or rate limited."
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching token prices:', error);
+          return NextResponse.json({
+            response: "I'm sorry, I couldn't retrieve token prices at the moment. Please try again later."
+          });
+        }
+      }
+      
+      // Handle the 'help' command without requiring wallet access
+      if (userMessage.includes('help') || userMessage.includes('commands') || userMessage.includes('what can you do')) {
+        return NextResponse.json({
+          response: "I can help you with:\n\n" +
+            "• Checking your wallet balance\n" +
+            "• Viewing your wallet address\n" +
+            "• Getting token prices\n" +
+            "• Viewing transaction history\n" +
+            "• Swapping tokens\n\n" +
+            "Example commands:\n" +
+            "- \"What's my wallet address?\"\n" +
+            "- \"Show me token prices\"\n" +
+            "- \"Show me the price of SOL\"\n" +
+            "- \"What's my balance?\"\n" +
+            "- \"Swap 10 USDC to SOL\"\n" +
+            "- \"Show my transaction history\""
+        });
+      }
+      
+      // If no other specific condition matches and we can't continue with the switch statement,
+      // provide a reasonable fallback response
+      if (userMessage.includes('transaction') || userMessage.includes('history') || 
+          userMessage.includes('swap') || userMessage.includes('send')) {
+        return NextResponse.json({
+          response: "This operation requires wallet access which is currently unavailable."
+        });
+      }
+      
+      // For completely unknown commands, give a helpful general response
+      if (!detectedIntent) {
+        return NextResponse.json({
+          response: "I can help you with Solana operations and provide token information. Try asking for token prices or use the help command to see what I can do."
+        });
+      }
     }
     
     // Handle the request based on the detected intent
@@ -699,71 +744,20 @@ export async function POST(req: Request) {
         
       case 'price':
         try {
-          // This section handles token price queries
-          // First, check for specific token mentions using a more precise regex
-          const tokenRegexPatterns = [
-            /price of (\w+)/i,                  // "price of SOL"
-            /(\w+) price/i,                     // "SOL price"
-            /how much is (\w+)/i,               // "how much is SOL"
-            /what is (\w+) worth/i,             // "what is SOL worth"
-            /what is the price of (\w+)/i,      // "what is the price of SOL"
-            /how much does (\w+) cost/i,        // "how much does SOL cost"
-            /value of (\w+)/i,                  // "value of SOL"
-            /(\w+) token/i,                     // "SOL token"
-            /\b(sol|usdc|bonk|jto|pyth|wif|sonic)\b/i  // Direct token mention
-          ];
+          // This function handles token price queries and doesn't require a wallet
+          const priceData = await getTokenPrices(userMessage);
           
-          let tokenSymbol: string | null = null;
-          
-          // Try each pattern to find a token match
-          for (const pattern of tokenRegexPatterns) {
-            const match = userMessage.match(pattern);
-            if (match && match[1]) {
-              const candidate = match[1].toUpperCase();
-              
-              // Verify this is actually a known token before accepting it
-              if (coinGeckoIdsCache && coinGeckoIdsCache[candidate]) {
-                tokenSymbol = candidate;
-                break;
-              }
-            }
-          }
-          
-          // If no match from patterns, try to extract token name from individual words
-          if (!tokenSymbol) {
-            const words = userMessage.split(/\s+/);
-            for (const word of words) {
-              // Only consider words that look like potential token symbols (2-5 characters)
-              const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-              if (cleanWord.length >= 2 && cleanWord.length <= 5 && 
-                  coinGeckoIdsCache && coinGeckoIdsCache[cleanWord]) {
-                tokenSymbol = cleanWord;
-                break;
-              }
-            }
-          }
-          
-          // If we found a specific token, get its price
-          if (tokenSymbol) {
-            // Fetch real-time price data from CoinGecko
-            const tokenPrices = await getTokenPrices([tokenSymbol]);
-            
-            if (tokenPrices && tokenPrices[tokenSymbol]) {
-              const tokenData = tokenPrices[tokenSymbol];
-              const changeSign = tokenData.change >= 0 ? '+' : '';
-              response = `Current ${tokenSymbol} price: $${tokenData.price.toFixed(tokenSymbol === 'BONK' ? 8 : 4)} (${changeSign}${tokenData.change.toFixed(2)}% in 24h)`;
+          // Convert the price data to a formatted string response
+          if (priceData && Object.keys(priceData).length > 0) {
+            if (Object.keys(priceData).length === 1) {
+              // Single token price
+              const [token, data] = Object.entries(priceData)[0];
+              const price = token === 'BONK' ? data.price.toFixed(8) : data.price.toFixed(4);
+              const changeSign = data.change >= 0 ? '+' : '';
+              response = `Current ${token} price: $${price} (${changeSign}${data.change.toFixed(2)}% in 24h)`;
             } else {
-              response = `I couldn't retrieve price information for ${tokenSymbol} from CoinGecko. The API may be unavailable or rate limited.`;
-            }
-          } 
-          // If no specific token was identified, show popular token prices
-          else {
-            // Show prices for popular tokens instead of all tokens
-            const popularTokens = ['SOL', 'USDC', 'BONK', 'JTO', 'PYTH', 'WIF'];
-            const tokenPrices = await getTokenPrices(popularTokens);
-            
-            if (tokenPrices && Object.keys(tokenPrices).length > 0) {
-              const pricesFormatted = Object.entries(tokenPrices)
+              // Multiple token prices
+              const pricesFormatted = Object.entries(priceData)
                 .map(([token, data]) => {
                   const price = token === 'BONK' ? data.price.toFixed(8) : data.price.toFixed(4);
                   const changeSign = data.change >= 0 ? '+' : '';
@@ -771,27 +765,32 @@ export async function POST(req: Request) {
                 })
                 .join('\n');
               
-              response = `Here are the current prices for popular tokens from CoinGecko:\n\n${pricesFormatted}\n\nTo check a specific token, please mention its symbol (e.g., "What is the price of SOL?")`;
-            } else {
-              response = "I couldn't retrieve token prices from CoinGecko. The API may be unavailable or rate limited.";
+              response = `Here are the current token prices:\n\n${pricesFormatted}`;
             }
+          } else {
+            response = "I couldn't retrieve token prices at the moment. The API may be unavailable or rate limited.";
           }
-        } catch (priceError) {
-          console.error('Error handling price request:', priceError);
-          response = "I encountered an error while fetching token prices from CoinGecko. The API may be unavailable or rate limited.";
+        } catch (error) {
+          console.error('Error fetching token prices in switch case:', error);
+          response = "I'm sorry, I couldn't retrieve token prices at the moment. Please try again later.";
         }
         break;
         
       case 'help':
-        response = "I can help you with various Solana operations, including:\n\n" +
-                  "- Checking your wallet balance\n" +
-                  "- Viewing your wallet address\n" +
-                  "- Getting real-time token prices from CoinGecko\n" +
-                  "- Viewing transaction history\n" +
-                  "- Sending SOL or tokens (coming soon)\n" +
-                  "- Swapping tokens (coming soon)\n" +
-                  "- Providing AI-recommended top coins for investment\n\n" +
-                  "What would you like to do?";
+        // This command doesn't require wallet access
+        response = "I can help you with:\n\n" +
+          "• Checking your wallet balance\n" +
+          "• Viewing your wallet address\n" +
+          "• Getting token prices\n" +
+          "• Viewing transaction history\n" +
+          "• Swapping tokens\n\n" +
+          "Example commands:\n" +
+          "- \"What's my wallet address?\"\n" +
+          "- \"Show me token prices\"\n" +
+          "- \"Show me the price of SOL\"\n" +
+          "- \"What's my balance?\"\n" +
+          "- \"Swap 10 USDC to SOL\"\n" +
+          "- \"Show my transaction history\"";
         break;
         
       case 'recommendations': {

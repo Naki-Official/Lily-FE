@@ -591,21 +591,6 @@ export default function HomePage() {
                   ) : null}
                 </div>
                 
-                {authenticated && !walletAddress && (
-                  <div className="flex items-center space-x-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 md:px-5 md:py-2.5 shadow-sm border border-white/20 transition-all duration-300">
-                    <button 
-                      onClick={handleConnectWallet} 
-                      className="font-sf-pro text-xs md:text-base text-white flex items-center space-x-2"
-                      disabled={isWalletLoading}
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      {isWalletLoading ? 'Connecting...' : 'Connect Wallet'}
-                    </button>
-                  </div>
-                )}
-                
                 <button 
                   onClick={handleLogout}
                   className="flex items-center space-x-2 rounded-full px-3 py-1.5 md:px-5 md:py-2.5 text-white bg-[rgba(255,59,48,0.2)] hover:bg-[rgba(255,59,48,0.3)] transition-all duration-300 border border-[rgba(255,59,48,0.3)]"

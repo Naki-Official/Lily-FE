@@ -1,6 +1,22 @@
 import { usePrivy } from '@privy-io/react-auth';
 import * as React from 'react';
 
+// Define interfaces for Privy linked accounts
+interface WalletAccount {
+  type: 'wallet';
+  address: string;
+  walletClientType?: string;
+}
+
+interface GenericAccount {
+  type: string;
+  address?: string;
+  walletClientType?: string;
+  [key: string]: unknown;
+}
+
+type LinkedAccount = WalletAccount | GenericAccount;
+
 // Define a more specific type for debug info
 interface DebugInfo {
   isVercel?: boolean;
@@ -14,6 +30,7 @@ interface DebugInfo {
   privateKeyAvailable?: boolean;
   foundWalletType?: string;
   error?: string;
+  solanaWalletFound?: boolean;
   [key: string]: unknown;
 }
 
@@ -50,18 +67,44 @@ export function usePrivyWallet() {
 
       try {
         // Check if user has a Privy embedded wallet
-        // Using an approach that avoids TypeScript errors
         let foundWalletAddress: string | null = null;
         
         if (user.linkedAccounts && user.linkedAccounts.length > 0) {
-          // Look for wallet accounts
-          for (const account of user.linkedAccounts) {
-            // Safely check if this is a wallet account
-            if (account.type === 'wallet') {
-              // Try to extract the address
-              const address = account.address as string | undefined;
-              if (address) {
-                foundWalletAddress = address;
+          // First look specifically for Solana wallets, prioritizing Phantom
+          let phantomWallet: LinkedAccount | null = null;
+          let otherSolanaWallet: LinkedAccount | null = null;
+          
+          // Safely cast linkedAccounts
+          const linkedAccounts = user.linkedAccounts as LinkedAccount[];
+          
+          for (const account of linkedAccounts) {
+            // Check for Solana addresses (they typically start with a different pattern than Ethereum)
+            const address = account.address;
+            
+            if (address && !address.startsWith('0x')) {
+              // This is likely a Solana address
+              info.solanaWalletFound = true;
+              
+              if (account.walletClientType === 'phantom') {
+                phantomWallet = account;
+                break; // Prioritize Phantom wallet
+              } else if (!otherSolanaWallet) {
+                otherSolanaWallet = account;
+              }
+            }
+          }
+          
+          // Use Phantom if found, otherwise use any other Solana wallet
+          const solanaWallet = phantomWallet || otherSolanaWallet;
+          
+          if (solanaWallet && solanaWallet.address) {
+            foundWalletAddress = solanaWallet.address;
+            info.foundWalletType = solanaWallet.walletClientType || 'solana';
+          } else {
+            // Fallback to any wallet if no Solana wallet found
+            for (const account of linkedAccounts) {
+              if (account.type === 'wallet' && account.address) {
+                foundWalletAddress = account.address;
                 info.foundWalletType = account.walletClientType || 'unknown';
                 break;
               }
@@ -93,7 +136,7 @@ export function usePrivyWallet() {
           info.privateKeyAvailable = false;
           
           // Note: Direct private key access requires user interaction via exportWallet
-          // We can't programmatically extract it due to security reasons
+          // We can't programmatically extract it due to security constraints
           setError('No private key available in environment');
         }
         
