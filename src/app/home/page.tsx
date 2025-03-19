@@ -151,10 +151,16 @@ export default function HomePage() {
           role: msg.role,
           content: msg.content
         })),
-        privateKey: privateKey || undefined
+        privateKey: privateKey || undefined,
+        walletAddress: walletAddress || undefined
       };
       
-      console.log('Request data prepared (private key length):', privateKey ? privateKey.length : 0);
+      console.log('Request data prepared:', {
+        privateKeyAvailable: !!privateKey,
+        privateKeyLength: privateKey ? privateKey.length : 0,
+        walletAddressAvailable: !!walletAddress,
+        walletAddressLength: walletAddress ? walletAddress.length : 0
+      });
       
       // Send message to API with detailed error logging
       const response = await fetch('/api/chat', {
@@ -331,7 +337,8 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'address' }],
-          privateKey: privateKey || undefined
+          privateKey: privateKey || undefined,
+          walletAddress: walletAddress || undefined
         }),
       });
       
@@ -354,7 +361,8 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'balance' }],
-          privateKey: privateKey || undefined
+          privateKey: privateKey || undefined,
+          walletAddress: walletAddress || undefined
         }),
       });
       
@@ -371,7 +379,7 @@ export default function HomePage() {
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [authenticated, privateKey]);
+  }, [authenticated, privateKey, walletAddress]);
   
   // Fetch wallet info when component mounts and user is authenticated
   React.useEffect(() => {
@@ -401,7 +409,7 @@ export default function HomePage() {
   }, []);
 
   // Add this function to the HomePage component
-  const handleTestAPI = async () => {
+  const testApiConnection = async () => {
     setIsLoading(true);
     
     // Add a user message
@@ -425,12 +433,30 @@ export default function HomePage() {
       const testData = await testResponse.json();
       console.log('Test API response:', testData);
       
+      // Now test a simple token price request which doesn't need a wallet
+      const tokenPriceResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'Show me token prices' }],
+          privateKey: privateKey || undefined,
+          walletAddress: walletAddress || undefined
+        }),
+      });
+      
+      if (!tokenPriceResponse.ok) {
+        throw new Error(`Token price API failed: ${tokenPriceResponse.status}`);
+      }
+      
       // Add success message
       setMessages((prev) => [
         ...prev,
         { 
           role: 'assistant', 
-          content: `API connection successful!\nServer time: ${testData.timestamp}\n\nYou can now try other commands.`, 
+          content: `API connection successful!\nServer time: ${testData.timestamp}\n\nWallet status:\n- Wallet address available: ${walletAddress ? 'Yes' : 'No'}\n- Private key available: ${privateKey ? 'Yes' : 'No'}\n\nYou can now try other commands.`, 
           id: Date.now().toString() 
         },
       ]);
@@ -797,7 +823,7 @@ export default function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleTestAPI}
+                    onClick={testApiConnection}
                     className="rounded-full bg-[#E0F2FF] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#007AFF] hover:bg-[#B8E2FF] transition-colors"
                     disabled={isLoading}
                   >

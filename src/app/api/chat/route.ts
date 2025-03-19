@@ -112,7 +112,7 @@ let solanaKit: SolanaAgentKit | null = null;
 let tools: any[] = [];
 
 // Runtime initialization to prevent build-time errors
-const initializeRuntime = async (userPrivateKey?: string) => {
+const initializeRuntime = async (userPrivateKey?: string, userWalletAddress?: string) => {
   try {
     // If we have a new user private key and already initialized, we should reinitialize
     if (userPrivateKey && solanaKit) {
@@ -128,6 +128,7 @@ const initializeRuntime = async (userPrivateKey?: string) => {
     }
     
     console.log('Initializing Solana Kit and tools...');
+    console.log('User wallet address available:', !!userWalletAddress);
     
     // Use the utility function that handles build-time safely
     // Pass the user's private key if provided
@@ -140,7 +141,8 @@ const initializeRuntime = async (userPrivateKey?: string) => {
     console.log('Solana initialization complete:', {
       kitAvailable: !!solanaKit,
       toolsCount: tools.length,
-      usingUserKey: !!userPrivateKey
+      usingUserKey: !!userPrivateKey,
+      userWalletAddress: userWalletAddress || 'Not provided'
     });
   } catch (error) {
     console.error('Error during runtime initialization:', error);
@@ -411,10 +413,10 @@ export async function POST(req: Request) {
     
     // Parse request body
     const body = await req.json();
-    const { messages, privateKey } = body;
+    const { messages, privateKey, walletAddress } = body;
     
     // Initialize Solana components safely, passing user's private key if available
-    await initializeRuntime(privateKey);
+    await initializeRuntime(privateKey, walletAddress);
     
     // Process the user's message
     const userMessage = messages[messages.length - 1].content.toLowerCase();
@@ -426,6 +428,39 @@ export async function POST(req: Request) {
     console.log('Processing message:', userMessage);
     console.log('Solana connection available:', !!solanaKit);
     console.log('Using user provided key:', !!privateKey);
+    console.log('User wallet address available:', !!walletAddress);
+    
+    // If wallet address is provided but we don't have a private key, use it for commands
+    // that only need the address (balance, transaction history, etc.)
+    if (walletAddress && !privateKey && (!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
+      console.log('Using wallet address only mode (no private key)');
+      
+      if (userMessage.includes('address')) {
+        return NextResponse.json({ 
+          response: `Your wallet address is ${walletAddress}` 
+        });
+      }
+      
+      // For other commands, we need to explain that certain operations require the private key
+      // Handle different commands with appropriate responses
+      if (userMessage.includes('balance')) {
+        return NextResponse.json({
+          response: "I can see your wallet address, but I need additional permissions to check your balance. Please use the 'Connect Wallet' button to grant full access."
+        });
+      }
+      
+      if (userMessage.includes('transaction') || userMessage.includes('history')) {
+        return NextResponse.json({
+          response: "I can see your wallet address, but I need additional permissions to view your transaction history. Please use the 'Connect Wallet' button to grant full access."
+        });
+      }
+      
+      if (userMessage.includes('swap')) {
+        return NextResponse.json({
+          response: "I can see your wallet address, but I need additional permissions to perform swaps. Please use the 'Connect Wallet' button to grant full access."
+        });
+      }
+    }
     
     // Special handling for Vercel without proper environment variables and no user key
     if (isVercel && (!privateKey && !process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
@@ -439,27 +474,41 @@ export async function POST(req: Request) {
         hasEnvKey: !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY,
         envKeyLength: process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.length : 0,
         hasSolanaKit: !!solanaKit,
+        hasWalletAddress: !!walletAddress,
         userMessage
       };
       console.log('Debug info:', debugInfo);
       
       // Handle different commands even when we don't have a private key
       if (userMessage.includes('address')) {
+        if (walletAddress) {
+          return NextResponse.json({ 
+            response: `Your wallet address is ${walletAddress}` 
+          });
+        }
+        
         return NextResponse.json({ 
-          response: "You need to connect your wallet first to access wallet address information. Please reload the page and ensure your wallet is connected." 
+          response: "You need to connect your wallet first to access wallet address information. Please click the 'Connect Wallet' button at the top of the page." 
         });
       }
       
       if (userMessage.includes('balance')) {
         return NextResponse.json({
-          response: "You need to connect your wallet first to access wallet balance information. Please reload the page and ensure your wallet is connected."
+          response: "You need to connect your wallet first to access wallet balance information. Please click the 'Connect Wallet' button at the top of the page."
+        });
+      }
+      
+      if (userMessage.includes('price') || userMessage.includes('token price')) {
+        // Token price queries don't need wallet access, so we can still handle them
+        return NextResponse.json({
+          response: await getTokenPrices(userMessage)
         });
       }
       
       // If we need more specific error messages for other commands, add them here
       // Default to a generic response if no specific handlers
       return NextResponse.json({
-        response: "I'm unable to access your wallet information at the moment. Please ensure your wallet is connected and reload the page."
+        response: "I'm unable to access your wallet information at the moment. Please click the 'Connect Wallet' button at the top of the page."
       });
     }
     
