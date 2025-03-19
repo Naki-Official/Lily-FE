@@ -352,6 +352,13 @@ async function getTokenPrices(tokenSymbols: string[]) {
   }
 }
 
+// Handle both GET and POST requests to prevent 405 errors
+export async function GET(req: Request) {
+  return NextResponse.json({ 
+    response: "This API endpoint requires a POST request with message data. Please use the chat interface." 
+  });
+}
+
 // Initialize Solana Agent Kit with environment variables
 export async function POST(req: Request) {
   try {

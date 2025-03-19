@@ -27,12 +27,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Configure output options
-  output: 'export', // Change to export for static site generation
-  distDir: 'out',
-
   images: {
-    unoptimized: true, // Required for static export
     remotePatterns: [
       {
         protocol: 'https',
@@ -40,16 +35,6 @@ const nextConfig = {
       },
     ],
   },
-
-  // Uncoment to add domain whitelist
-  // images: {
-  //   remotePatterns: [
-  //     {
-  //       protocol: 'https',
-  //       hostname: 'res.cloudinary.com',
-  //     },
-  //   ]
-  // },
 
   // Configure build to continue despite errors on specific pages
   experimental: {
