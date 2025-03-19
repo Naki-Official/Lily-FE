@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createSolanaTools, SolanaAgentKit } from 'solana-agent-kit';
 
 // Mock transaction data (in a real app, this would come from the blockchain)
-const mockTransactions = [
+const _mockTransactions = [
   { 
     id: 'tx1', 
     type: 'Send', 
@@ -200,7 +200,9 @@ const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 
 // Initialize Solana Agent Kit with proper configuration
 // We create it outside the handler to reuse the same instance
-const privateKeyBase58 = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY!;
+const privateKeyBase58 = typeof process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY === 'string' 
+       ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY 
+       : '';
 
 // Validate the private key format
 try {
