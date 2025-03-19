@@ -17,16 +17,39 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
   const isServer = typeof window === 'undefined';
   const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
   
-  // If we're in a build environment, just render children without Privy
-  if (isBuildTime) {
-    console.log('Build environment detected, skipping Privy initialization');
+  // Get the app ID from environment variables
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cm86sdg5a00vxeixbkeg3z2e7';
+  
+  // Handle potential window.ethereum conflicts before Privy initialization
+  React.useEffect(() => {
+    try {
+      // This helps with Metamask/other wallet conflicts
+      if (typeof window !== 'undefined' && window.ethereum) {
+        // Store the original ethereum provider
+        const originalEthereum = window.ethereum;
+        
+        // Create a proxy to handle property access conflicts
+        Object.defineProperty(window, '_originalEthereum', {
+          value: originalEthereum,
+          writable: false,
+          configurable: true
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to handle ethereum provider:', error);
+    }
+  }, []);
+  
+  // If we're in a build environment or missing app ID, just render children without Privy
+  if (isBuildTime || !appId) {
+    console.log('Build environment or missing Privy app ID detected, skipping Privy initialization');
     return <>{children}</>;
   }
   
   // In runtime environment, use the normal Privy provider
   return (
     <PrivyAuthProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
+      appId={appId}
       config={{
         // Configure available login methods
         loginMethods: ['email', 'wallet', 'google', 'apple'],

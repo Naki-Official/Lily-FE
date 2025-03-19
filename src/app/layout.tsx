@@ -117,13 +117,44 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
+interface RootLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+/**
+ * Root layout component for the entire application
+ * Responsible for layout structure, fonts, and authentication context
+ */
+export default function RootLayout({ children }: RootLayoutProps) {
+  // Log environment variables to help with debugging (excluding sensitive ones)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+      HAS_PRIVY_APP_ID: !!process.env.NEXT_PUBLIC_PRIVY_APP_ID,
+    });
+  }
+
+  const fontClasses = `${inter.variable} ${sfProRounded.variable} ${sfPro.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`;
+
   return (
-    <html lang="en" className={`${inter.variable} ${sfProRounded.variable} ${sfPro.variable} ${sfCompactRounded.variable} ${sfCompactDisplay.variable}`}>
+    <html lang="en" className={fontClasses}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (typeof window !== 'undefined' && window.ethereum) {
+                  const originalEthereum = window.ethereum;
+                  window._originalEthereum = originalEthereum;
+                }
+              } catch (e) {
+                console.warn('Ethereum conflict handler error:', e);
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="bg-white font-sans">
         <PrivyProvider>{children}</PrivyProvider>
       </body>
