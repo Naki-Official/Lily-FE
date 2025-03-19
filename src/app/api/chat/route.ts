@@ -367,8 +367,27 @@ async function getTokenPrices(tokenSymbols: string[]) {
   }
 }
 
-// Handle both GET and POST requests to prevent 405 errors
+// GET endpoint with added Vercel environment checks
 export async function GET(req: Request) {
+  // Check if we're on Vercel
+  const isVercel = typeof process.env.VERCEL === 'string' && process.env.VERCEL === '1';
+  
+  // Return detailed env info when on Vercel to help with debugging
+  if (isVercel) {
+    const envInfo = {
+      message: "This API endpoint requires a POST request with message data",
+      debug: {
+        isVercel: isVercel,
+        hasPrivateKey: !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY,
+        privateKeyLength: process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY?.length || 0,
+        hasRpcUrl: !!process.env.NEXT_PUBLIC_RPC_URL,
+        vercelEnv: process.env.VERCEL_ENV || 'unknown',
+      }
+    };
+    return NextResponse.json(envInfo);
+  }
+  
+  // Standard response for non-Vercel environments
   return NextResponse.json({ 
     response: "This API endpoint requires a POST request with message data. Please use the chat interface." 
   });
@@ -377,6 +396,10 @@ export async function GET(req: Request) {
 // Initialize Solana Agent Kit with environment variables
 export async function POST(req: Request) {
   try {
+    // Check if we're on Vercel
+    const isVercel = typeof process.env.VERCEL === 'string' && process.env.VERCEL === '1';
+    console.log('API route POST handler - is Vercel environment:', isVercel);
+    
     // Initialize Solana components safely
     await initializeRuntime();
     
@@ -391,6 +414,22 @@ export async function POST(req: Request) {
     
     console.log('Processing message:', userMessage);
     console.log('Solana connection available:', !!solanaKit);
+    
+    // Special handling for Vercel without proper environment variables
+    if (isVercel && (!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
+      console.log('Running on Vercel with missing environment variables');
+      if (userMessage.includes('address')) {
+        return NextResponse.json({ 
+          response: "You need to set the NEXT_PUBLIC_SOLANA_PRIVATE_KEY environment variable in your Vercel project settings to access wallet address information." 
+        });
+      }
+      
+      if (userMessage.includes('balance')) {
+        return NextResponse.json({
+          response: "You need to set the NEXT_PUBLIC_SOLANA_PRIVATE_KEY environment variable in your Vercel project settings to access wallet balance information."
+        });
+      }
+    }
     
     // First, determine the user's intent
     const intentPatterns = [

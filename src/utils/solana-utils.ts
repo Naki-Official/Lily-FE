@@ -9,11 +9,13 @@ export async function initSolanaKit() {
     // Check if we're in a build/SSG environment first
     const isServer = typeof window === 'undefined';
     const isBuildTime = isServer && process.env.NEXT_PHASE === 'phase-production-build';
+    const isVercel = typeof process.env.VERCEL === 'string' && process.env.VERCEL === '1';
     
     // Add more detailed debug logging
     console.log('Initializing Solana Kit with:');
     console.log('- isServer:', isServer);
     console.log('- isBuildTime:', isBuildTime);
+    console.log('- isVercel:', isVercel);
     console.log('- NEXT_PHASE:', process.env.NEXT_PHASE);
     console.log('- Has RPC URL:', !!process.env.NEXT_PUBLIC_RPC_URL);
     console.log('- Has private key:', !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY);
@@ -39,38 +41,6 @@ export async function initSolanaKit() {
     
     console.log('Private key length:', privateKeyBase58 ? privateKeyBase58.length : 0);
     
-    let validKey = 'placeholder'; // Use placeholder as the default to prevent decode attempts on empty strings
-    let useFallbackWallet = false; // Track if we need to use fallback
-    
-    try {
-      // Only attempt to decode if the key is a non-empty string
-      if (privateKeyBase58 && privateKeyBase58.length > 0) {
-        // Safely decode the private key
-        try {
-          const decodedPrivateKey = bs58.decode(privateKeyBase58);
-          console.log('Decoded private key length:', decodedPrivateKey.length);
-          
-          if (decodedPrivateKey.length === 64) {
-            // Valid key, use it
-            validKey = privateKeyBase58;
-            console.log('Valid private key detected');
-          } else {
-            console.error("Invalid Solana private key length. It should be 64 bytes.");
-            useFallbackWallet = true;
-          }
-        } catch (decodeError) {
-          console.error("Error decoding private key:", decodeError);
-          useFallbackWallet = true;
-        }
-      } else {
-        console.error("Solana private key is missing or empty");
-        useFallbackWallet = true;
-      }
-    } catch (keyError) {
-      console.error("Error processing private key:", keyError);
-      useFallbackWallet = true;
-    }
-    
     // Ensure we have a non-empty RPC URL
     const rpcUrl = typeof process.env.NEXT_PUBLIC_RPC_URL === 'string' && process.env.NEXT_PUBLIC_RPC_URL
       ? process.env.NEXT_PUBLIC_RPC_URL
@@ -78,25 +48,66 @@ export async function initSolanaKit() {
     
     console.log('Using RPC URL:', rpcUrl);
     
-    // If we need fallback wallet, create a demo one with methods for UI demonstration
-    if (useFallbackWallet) {
-      console.log('Creating fallback wallet for demonstration');
-      
-      // Create a mock kit for demonstration purposes
-      const mockKit = {
-        wallet_address: 'DemoWaLLeTaddREsS111111111111111111111',
-        getBalance: async () => "4.20",
-        // Add other methods that might be used
-      };
-      
-      return { 
-        // Use type assertion to avoid TypeScript errors
-        solanaKit: mockKit as unknown as typeof SolanaAgentKit.prototype, 
-        tools: [] 
-      };
+    let validKey = 'placeholder'; // Use placeholder as the default
+    let useFallbackWallet = false; // Track if we need to use fallback
+    
+    // Attempt to decode and validate the key
+    if (privateKeyBase58 && privateKeyBase58.length > 0) {
+      try {
+        const decodedPrivateKey = bs58.decode(privateKeyBase58);
+        console.log('Decoded private key length:', decodedPrivateKey.length);
+        
+        if (decodedPrivateKey.length === 64) {
+          // We have a valid key, use it
+          validKey = privateKeyBase58;
+          console.log('Valid private key detected - using real wallet');
+        } else {
+          console.error("Invalid Solana private key length. It should be 64 bytes.");
+          useFallbackWallet = true;
+        }
+      } catch (decodeError) {
+        console.error("Error decoding private key:", decodeError);
+        useFallbackWallet = true;
+      }
+    } else {
+      console.error("Solana private key is missing or empty");
+      useFallbackWallet = true;
     }
     
-    // Create the kit with the validated key
+    // If we need a fallback wallet during development, create a demo one
+    if (useFallbackWallet && !isVercel) {
+      console.log('Creating local fallback wallet for development');
+      
+      // Create a SolanaAgentKit instance with a placeholder key
+      const solanaKit = new SolanaAgentKit(
+        'placeholder', // Placeholder key - won't work for real operations
+        rpcUrl,
+        {
+          OPENAI_API_KEY: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+          COINGECKO_DEMO_API_KEY: process.env.NEXT_PUBLIC_COINGECKO_DEMO_API_KEY || '',
+        }
+      );
+      
+      // Override methods for demo purposes
+      // @ts-expect-error - Intentionally overriding readonly property
+      solanaKit.wallet_address = 'DemoWaLLeTaddREsS111111111111111111111';
+      
+      // @ts-expect-error - Overriding method
+      solanaKit.getBalance = async () => "4.20";
+      
+      console.log('Created fallback wallet for local development');
+      return { solanaKit, tools: [] };
+    }
+    
+    // For Vercel deployments, we want to try to use the actual key
+    // even if it seems invalid - to match localhost behavior
+    if (isVercel) {
+      console.log('Running on Vercel, attempting to use provided key regardless of validation');
+      validKey = privateKeyBase58 || 'placeholder';
+    }
+    
+    // Create the kit with the key (either validated or forced on Vercel)
+    console.log('Creating SolanaAgentKit with key length:', validKey.length);
     const solanaKit = new SolanaAgentKit(
       validKey,
       rpcUrl,
@@ -122,18 +133,25 @@ export async function initSolanaKit() {
   } catch (error) {
     console.error('Failed to initialize Solana Kit:', error);
     
-    // Return a demo wallet for UI purposes
-    const demoWallet = {
-      wallet_address: 'DemoWaLLeTaddREsS111111111111111111111',
-      getBalance: async () => "3.14",
-      // Add other methods that might be used
-    };
-    
-    return { 
-      // Use a safer type assertion
-      solanaKit: demoWallet as unknown as Record<string, unknown>, 
-      tools: [] 
-    };
+    try {
+      // Last resort fallback - create a minimal wrapper
+      console.log('Creating emergency fallback mock');
+      
+      const mockWallet = {
+        wallet_address: 'EmergencyFallbackWallet111111111111111',
+        getBalance: async () => "9.99",
+        // Add minimal methods needed for the app to function
+      };
+      
+      return { 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        solanaKit: mockWallet as any,
+        tools: [] 
+      };
+    } catch (fallbackError) {
+      console.error('Even fallback creation failed:', fallbackError);
+      return { solanaKit: null, tools: [] };
+    }
   }
 }
 
