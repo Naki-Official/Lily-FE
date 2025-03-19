@@ -4,7 +4,7 @@
  */
 
 // Initialize Solana Kit with proper error handling
-export async function initSolanaKit() {
+export async function initSolanaKit(userPrivateKey?: string) {
   try {
     // Check if we're in a build/SSG environment first
     const isServer = typeof window === 'undefined';
@@ -18,7 +18,7 @@ export async function initSolanaKit() {
     console.log('- isVercel:', isVercel);
     console.log('- NEXT_PHASE:', process.env.NEXT_PHASE);
     console.log('- Has RPC URL:', !!process.env.NEXT_PUBLIC_RPC_URL);
-    console.log('- Has private key:', !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY);
+    console.log('- Has user private key:', !!userPrivateKey);
     
     // If running during build time, return mock data
     if (isBuildTime) {
@@ -34,10 +34,11 @@ export async function initSolanaKit() {
     const bs58 = bs58Module.default;
     const { SolanaAgentKit, createSolanaTools } = await import('solana-agent-kit');
     
-    // Get environment variables - safely
-    const privateKeyBase58 = typeof process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY === 'string' 
-      ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.trim() 
-      : '';
+    // Try to use the user provided private key, fall back to env vars if needed
+    const privateKeyBase58 = userPrivateKey || 
+      (typeof process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY === 'string' 
+        ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.trim() 
+        : '');
     
     console.log('Private key length:', privateKeyBase58 ? privateKeyBase58.length : 0);
     

@@ -4,6 +4,9 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
+// Add import for our custom hook
+import { usePrivyWallet } from '@/hooks/usePrivyWallet';
+
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
 import { tokens } from '@/constant/tokens';
@@ -30,6 +33,9 @@ export default function HomePage() {
   const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
   
+  // Add our wallet hook
+  const { privateKey, walletAddress, hasWallet, isLoading: isWalletLoading } = usePrivyWallet();
+  
   // Add the keyframe style to the document
   React.useEffect(() => {
     // Create a style element
@@ -49,7 +55,6 @@ export default function HomePage() {
   // User's SOL balance
   const [solBalance, setSolBalance] = React.useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
-  const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
   
   // Swap state
   const [isSwapping, setIsSwapping] = React.useState(false);
@@ -140,15 +145,16 @@ export default function HomePage() {
     try {
       console.log('Sending message to API:', input);
       
-      // Prepare request data
+      // Prepare request data - include private key if available
       const requestData = {
         messages: [...messages, userMessage].map(msg => ({
           role: msg.role,
           content: msg.content
         })),
+        privateKey: privateKey || undefined
       };
       
-      console.log('Request data:', JSON.stringify(requestData));
+      console.log('Request data prepared (private key length):', privateKey ? privateKey.length : 0);
       
       // Send message to API with detailed error logging
       const response = await fetch('/api/chat', {
@@ -319,16 +325,17 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'address' }],
+          privateKey: privateKey || undefined
         }),
       });
       
       if (addressResponse.ok) {
         const addressData = await addressResponse.json();
-        // Extract address from response
+        // We don't need to set the address anymore as we get it from the hook
+        // Just log it for debugging purposes
         const addressMatch = addressData.response.match(/address is ([a-zA-Z0-9]{32,44})/i);
         if (addressMatch && addressMatch[1]) {
-          const fullAddress = addressMatch[1];
-          setWalletAddress(fullAddress);
+          console.log('API returned wallet address:', addressMatch[1]);
         }
       }
       
@@ -341,6 +348,7 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'balance' }],
+          privateKey: privateKey || undefined
         }),
       });
       
@@ -357,7 +365,7 @@ export default function HomePage() {
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [authenticated]);
+  }, [authenticated, privateKey]);
   
   // Fetch wallet info when component mounts and user is authenticated
   React.useEffect(() => {

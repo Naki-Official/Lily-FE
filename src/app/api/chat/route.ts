@@ -112,10 +112,17 @@ let solanaKit: SolanaAgentKit | null = null;
 let tools: any[] = [];
 
 // Runtime initialization to prevent build-time errors
-const initializeRuntime = async () => {
+const initializeRuntime = async (userPrivateKey?: string) => {
   try {
-    // Skip initialization if already done
-    if (solanaKit) {
+    // If we have a new user private key and already initialized, we should reinitialize
+    if (userPrivateKey && solanaKit) {
+      console.log('New user private key provided, reinitializing Solana Kit');
+      solanaKit = null;
+      tools = [];
+    }
+    
+    // Skip initialization if already done and no new key provided
+    if (solanaKit && !userPrivateKey) {
       console.log('Solana Kit already initialized, reusing existing instance');
       return;
     }
@@ -123,7 +130,8 @@ const initializeRuntime = async () => {
     console.log('Initializing Solana Kit and tools...');
     
     // Use the utility function that handles build-time safely
-    const { solanaKit: kit, tools: solanaTools } = await initSolanaKit();
+    // Pass the user's private key if provided
+    const { solanaKit: kit, tools: solanaTools } = await initSolanaKit(userPrivateKey);
     
     // Store the results for reuse
     solanaKit = kit;
@@ -131,7 +139,8 @@ const initializeRuntime = async () => {
     
     console.log('Solana initialization complete:', {
       kitAvailable: !!solanaKit,
-      toolsCount: tools.length
+      toolsCount: tools.length,
+      usingUserKey: !!userPrivateKey
     });
   } catch (error) {
     console.error('Error during runtime initialization:', error);
@@ -400,10 +409,12 @@ export async function POST(req: Request) {
     const isVercel = typeof process.env.VERCEL === 'string' && process.env.VERCEL === '1';
     console.log('API route POST handler - is Vercel environment:', isVercel);
     
-    // Initialize Solana components safely
-    await initializeRuntime();
+    // Parse request body
+    const body = await req.json();
+    const { messages, privateKey } = body;
     
-    const { messages } = await req.json();
+    // Initialize Solana components safely, passing user's private key if available
+    await initializeRuntime(privateKey);
     
     // Process the user's message
     const userMessage = messages[messages.length - 1].content.toLowerCase();
@@ -414,19 +425,20 @@ export async function POST(req: Request) {
     
     console.log('Processing message:', userMessage);
     console.log('Solana connection available:', !!solanaKit);
+    console.log('Using user provided key:', !!privateKey);
     
-    // Special handling for Vercel without proper environment variables
-    if (isVercel && (!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
-      console.log('Running on Vercel with missing environment variables');
+    // Special handling for Vercel without proper environment variables and no user key
+    if (isVercel && (!privateKey && !process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
+      console.log('Running on Vercel with missing private key');
       if (userMessage.includes('address')) {
         return NextResponse.json({ 
-          response: "You need to set the NEXT_PUBLIC_SOLANA_PRIVATE_KEY environment variable in your Vercel project settings to access wallet address information." 
+          response: "You need to connect your wallet first to access wallet address information." 
         });
       }
       
       if (userMessage.includes('balance')) {
         return NextResponse.json({
-          response: "You need to set the NEXT_PUBLIC_SOLANA_PRIVATE_KEY environment variable in your Vercel project settings to access wallet balance information."
+          response: "You need to connect your wallet first to access wallet balance information."
         });
       }
     }
