@@ -8,6 +8,7 @@ import '@/styles/globals.css';
 import '@/styles/colors.css';
 
 import PrivyProvider from '@/components/auth/PrivyProvider';
+import WalletConnector from '@/components/auth/WalletConnector';
 
 import { siteConfig } from '@/constant/config';
 
@@ -156,7 +157,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
         />
       </head>
       <body className="bg-white font-sans">
-        <PrivyProvider>{children}</PrivyProvider>
+        <PrivyProvider>
+          <WalletConnector>
+            {children}
+          </WalletConnector>
+        </PrivyProvider>
       </body>
     </html>
   );

@@ -430,17 +430,37 @@ export async function POST(req: Request) {
     // Special handling for Vercel without proper environment variables and no user key
     if (isVercel && (!privateKey && !process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY || !solanaKit)) {
       console.log('Running on Vercel with missing private key');
+      
+      // Add debugging information
+      const debugInfo = {
+        isVercel,
+        hasPrivateKey: !!privateKey,
+        privateKeyLength: privateKey ? privateKey.length : 0,
+        hasEnvKey: !!process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY,
+        envKeyLength: process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY ? process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY.length : 0,
+        hasSolanaKit: !!solanaKit,
+        userMessage
+      };
+      console.log('Debug info:', debugInfo);
+      
+      // Handle different commands even when we don't have a private key
       if (userMessage.includes('address')) {
         return NextResponse.json({ 
-          response: "You need to connect your wallet first to access wallet address information." 
+          response: "You need to connect your wallet first to access wallet address information. Please reload the page and ensure your wallet is connected." 
         });
       }
       
       if (userMessage.includes('balance')) {
         return NextResponse.json({
-          response: "You need to connect your wallet first to access wallet balance information."
+          response: "You need to connect your wallet first to access wallet balance information. Please reload the page and ensure your wallet is connected."
         });
       }
+      
+      // If we need more specific error messages for other commands, add them here
+      // Default to a generic response if no specific handlers
+      return NextResponse.json({
+        response: "I'm unable to access your wallet information at the moment. Please ensure your wallet is connected and reload the page."
+      });
     }
     
     // First, determine the user's intent

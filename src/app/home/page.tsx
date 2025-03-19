@@ -30,11 +30,11 @@ const fadeInKeyframes = `
  * Shows a chat interface with Lily AI and navigation to the dashboard
  */
 export default function HomePage() {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, logout } = usePrivy();
   const router = useRouter();
   
   // Add our wallet hook
-  const { privateKey, walletAddress, hasWallet, isLoading: isWalletLoading } = usePrivyWallet();
+  const { privateKey, walletAddress, hasWallet, isLoading: isWalletLoading, error: walletError, requestPrivateKeyExport, debugInfo } = usePrivyWallet();
   
   // Add the keyframe style to the document
   React.useEffect(() => {
@@ -305,8 +305,14 @@ export default function HomePage() {
     router.push('/auth');
   };
 
-  const handleLogout = () => {
-    // In a real app, this would log the user out
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // After logout, redirect to the auth page
+      router.push('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   // Optimized function to fetch both wallet address and SOL balance in a single function
@@ -444,6 +450,21 @@ export default function HomePage() {
     }
   };
 
+  // Add function to handle explicit wallet connection
+  const handleConnectWallet = async () => {
+    try {
+      // Try to export wallet private key - this requires user permission
+      await requestPrivateKeyExport();
+      
+      // Force refresh wallet info
+      setTimeout(() => {
+        fetchWalletInfo();
+      }, 1000);
+    } catch (error) {
+      console.error('Error during wallet connection:', error);
+    }
+  };
+
   if (!ready || !authenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-custom-gradient-alt">
@@ -543,6 +564,21 @@ export default function HomePage() {
                     </div>
                   ) : null}
                 </div>
+                
+                {authenticated && !walletAddress && (
+                  <div className="flex items-center space-x-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 md:px-5 md:py-2.5 shadow-sm border border-white/20 transition-all duration-300">
+                    <button 
+                      onClick={handleConnectWallet} 
+                      className="font-sf-pro text-xs md:text-base text-white flex items-center space-x-2"
+                      disabled={isWalletLoading}
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      {isWalletLoading ? 'Connecting...' : 'Connect Wallet'}
+                    </button>
+                  </div>
+                )}
                 
                 <button 
                   onClick={handleLogout}

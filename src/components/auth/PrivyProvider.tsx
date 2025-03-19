@@ -7,6 +7,14 @@ interface PrivyProviderProps {
   children: React.ReactNode;
 }
 
+// Add TypeScript declarations for window properties
+declare global {
+  interface Window {
+    _originalEthereum?: unknown;
+    _privyEthereumSetup?: boolean;
+  }
+}
+
 /**
  * PrivyProvider component that wraps the application with Privy authentication
  * Note: The onSuccess callback should be handled via the useLogin hook in components
@@ -28,12 +36,19 @@ export default function PrivyProvider({ children }: PrivyProviderProps) {
         // Store the original ethereum provider
         const originalEthereum = window.ethereum;
         
-        // Create a proxy to handle property access conflicts
+        // Store it in a separate property instead of trying to override
         Object.defineProperty(window, '_originalEthereum', {
           value: originalEthereum,
           writable: false,
           configurable: true
         });
+        
+        // Add a safer version that doesn't modify window.ethereum directly
+        // but still makes the original available
+        if (!window._privyEthereumSetup) {
+          console.log('Setting up ethereum compatibility wrapper');
+          window._privyEthereumSetup = true;
+        }
       }
     } catch (error) {
       console.warn('Failed to handle ethereum provider:', error);
