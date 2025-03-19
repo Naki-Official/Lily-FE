@@ -314,79 +314,95 @@ export default function HomePage() {
   const handleLogout = async () => {
     try {
       await logout();
-      // After logout, redirect to the auth page
-      router.push('/auth');
+      router.push('/');
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Error during logout:', error);
     }
   };
 
-  // Optimized function to fetch both wallet address and SOL balance in a single function
+  // Function to fetch wallet info, including address and balance
   const fetchWalletInfo = React.useCallback(async () => {
-    if (!authenticated) return;
-    
-    setIsLoadingBalance(true);
-    
-    try {
-      // First fetch wallet address
-      const addressResponse = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache', // Ensure fresh data
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'address' }],
-          privateKey: privateKey || undefined,
-          walletAddress: walletAddress || undefined
-        }),
-      });
+    if (authenticated) {
+      setIsLoadingBalance(true);
       
-      if (addressResponse.ok) {
-        const addressData = await addressResponse.json();
-        // We don't need to set the address anymore as we get it from the hook
-        // Just log it for debugging purposes
-        const addressMatch = addressData.response.match(/address is ([a-zA-Z0-9]{32,44})/i);
-        if (addressMatch && addressMatch[1]) {
-          console.log('API returned wallet address:', addressMatch[1]);
+      try {
+        // Fetch wallet address
+        const addressResponse = await fetch('/api/wallet-address', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            privateKey: privateKey || undefined,
+            walletAddress: walletAddress || undefined
+          }),
+        });
+        
+        if (addressResponse.ok) {
+          const addressData = await addressResponse.json();
+          console.log('Wallet address returned from API:', addressData.address);
         }
+      } catch (error) {
+        console.error('Error fetching wallet info:', error);
+      } finally {
+        setIsLoadingBalance(false);
       }
-      
-      // Then fetch SOL balance
-      const balanceResponse = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache', // Ensure fresh data
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'balance' }],
-          privateKey: privateKey || undefined,
-          walletAddress: walletAddress || undefined
-        }),
-      });
-      
-      if (balanceResponse.ok) {
-        const balanceData = await balanceResponse.json();
-        // Extract balance from response
-        const balanceMatch = balanceData.response.match(/([0-9.]+)\s*SOL/i);
-        if (balanceMatch && balanceMatch[1]) {
-          setSolBalance(balanceMatch[1]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching wallet info:', error);
-    } finally {
-      setIsLoadingBalance(false);
     }
   }, [authenticated, privateKey, walletAddress]);
   
-  // Fetch wallet info when component mounts and user is authenticated
+  // Add token state
+  const [tokenPrices, setTokenPrices] = React.useState<Record<string, { price: number; change: number }> | null>(null);
+  const [isLoadingTokens, setIsLoadingTokens] = React.useState(false);
+  
+  // Function to fetch token prices
+  const fetchTokenPrices = React.useCallback(async () => {
+    try {
+      setIsLoadingTokens(true);
+      const response = await fetch('/api/token-prices');
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.prices) {
+          setTokenPrices(data.prices);
+          console.log('Token prices loaded:', data.prices);
+        } else {
+          console.error('Error loading token prices:', data.error);
+        }
+      } else {
+        console.error('Failed to fetch token prices:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching token prices:', error);
+    } finally {
+      setIsLoadingTokens(false);
+    }
+  }, []);
+  
+  // Fetch token prices on component mount
   React.useEffect(() => {
-    if (authenticated) {
+    fetchTokenPrices();
+  }, [fetchTokenPrices]);
+  
+  // Token price formatting helper
+  const formatTokenPrice = (price: number | undefined) => {
+    if (price === undefined) return '?.??';
+    return price < 0.01 ? price.toFixed(8) : price.toFixed(2);
+  };
+  
+  // token change formatting helper with + sign for positive changes
+  const formatTokenChange = (change: number | undefined) => {
+    if (change === undefined) return '?%';
+    const sign = change >= 0 ? '+' : '';
+    return `${sign}${change.toFixed(2)}%`;
+  };
+
+  // Initial page setup - fetch wallet info after authentication
+  React.useEffect(() => {
+    // Only attempt to fetch wallet info if user is authenticated
+    if (authenticated && (hasWallet || privateKey)) {
       fetchWalletInfo();
     }
-  }, [authenticated, fetchWalletInfo]);
+  }, [authenticated, hasWallet, privateKey, fetchWalletInfo]);
 
   // Update welcome message to include swap command example
   React.useEffect(() => {
@@ -408,88 +424,122 @@ export default function HomePage() {
     }
   }, []);
 
-  // Add this function to the HomePage component
-  const testApiConnection = async () => {
-    setIsLoading(true);
+  // Handle token prices display in chat
+  const handleShowTokenPrices = React.useCallback(() => {
+    if (!tokenPrices) return;
     
-    // Add a user message
-    const userMessage = { role: 'user', content: 'Testing API connection...', id: Date.now().toString() };
-    setMessages((prev) => [...prev, userMessage]);
+    const pricesFormatted = Object.entries(tokenPrices)
+      .map(([token, data]) => {
+        const price = token === 'BONK' || token === 'MEME' || token === 'JUP' ? 
+          data.price.toFixed(8) : data.price.toFixed(4);
+        const changeSign = data.change >= 0 ? '+' : '';
+        return `- ${token}: $${price} (${changeSign}${data.change.toFixed(2)}%)`;
+      })
+      .join('\n');
     
-    try {
-      // First test the test API endpoint
-      console.log('Testing API connection with test endpoint...');
-      const testResponse = await fetch('/api/test', {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-      });
-      
-      if (!testResponse.ok) {
-        throw new Error(`Test API failed: ${testResponse.status} ${testResponse.statusText}`);
-      }
-      
-      const testData = await testResponse.json();
-      console.log('Test API response:', testData);
-      
-      // Now test a simple token price request which doesn't need a wallet
-      const tokenPriceResponse = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'Show me token prices' }],
-          privateKey: privateKey || undefined,
-          walletAddress: walletAddress || undefined
-        }),
-      });
-      
-      if (!tokenPriceResponse.ok) {
-        throw new Error(`Token price API failed: ${tokenPriceResponse.status}`);
-      }
-      
-      // Add success message
-      setMessages((prev) => [
-        ...prev,
-        { 
-          role: 'assistant', 
-          content: `API connection successful!\nServer time: ${testData.timestamp}\n\nWallet status:\n- Wallet address available: ${walletAddress ? 'Yes' : 'No'}\n- Private key available: ${privateKey ? 'Yes' : 'No'}\n\nYou can now try other commands.`, 
-          id: Date.now().toString() 
-        },
-      ]);
-    } catch (error) {
-      console.error('Error testing API:', error);
-      // Add a more detailed error message
-      const errorMessage = error instanceof Error 
-        ? `API test failed: ${error.message}`
-        : 'API test failed with an unknown error';
-      
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: errorMessage, id: Date.now().toString() },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Add AI response to chat with token prices
+    setMessages((prev) => [
+      ...prev,
+      { 
+        role: 'assistant', 
+        content: `Here are the current token prices:\n\n${pricesFormatted}`, 
+        id: Date.now().toString() 
+      },
+    ]);
+  }, [tokenPrices]);
 
-  // Add function to handle explicit wallet connection
-  const handleConnectWallet = async () => {
-    try {
-      // Try to export wallet private key - this requires user permission
-      await requestPrivateKeyExport();
-      
-      // Force refresh wallet info
-      setTimeout(() => {
-        fetchWalletInfo();
-      }, 1000);
-    } catch (error) {
-      console.error('Error during wallet connection:', error);
-    }
-  };
+  // Add a button for showing token prices directly
+  const quickButtons = (
+    <div className="mb-4 flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          setInput("What's my wallet balance?");
+          // Submit the form programmatically after setting the input
+          setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }, 100);
+        }}
+        className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
+        disabled={isLoading}
+      >
+        Check Balance
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setInput("What's my wallet address?");
+          setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }, 100);
+        }}
+        className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
+        disabled={isLoading}
+      >
+        Show Address
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setInput("Show my transaction history");
+          setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }, 100);
+        }}
+        className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
+        disabled={isLoading}
+      >
+        Transaction History
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setInput("Swap 1 USDC to SOL");
+          setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }, 100);
+        }}
+        className="rounded-full bg-[#E0F2FF] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#007AFF] hover:bg-[#B8E2FF] transition-colors"
+        disabled={isLoading || isSwapping}
+      >
+        Swap 
+      </button>
+      <button
+        type="button"
+        onClick={handleShowTokenPrices}
+        className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
+        disabled={isLoading || !tokenPrices}
+      >
+        Token Prices
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setInput("What commands can you help me with?");
+          setTimeout(() => {
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }, 100);
+        }}
+        className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
+        disabled={isLoading}
+      >
+        Help
+      </button>
+      <button
+        type="button"
+        onClick={handleClearChat}
+        className="rounded-full bg-[#FFEBE9] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#FF3B30] hover:bg-[#FFD1CF] transition-colors"
+        disabled={isLoading}
+      >
+        Clear Chat
+      </button>
+    </div>
+  );
 
   if (!ready || !authenticated) {
     return (
@@ -540,47 +590,22 @@ export default function HomePage() {
                 <div className="flex items-center space-x-2 md:space-x-3">
                   {walletAddress ? (
                     <div className="flex items-center space-x-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 md:px-5 md:py-2.5 shadow-sm border border-white/20 transition-all duration-300 hover:bg-white/15">
-                      <div className="h-7 w-7 md:h-9 md:w-9 rounded-full bg-[#E0F2FF] flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5Z" stroke="#007AFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M3 7L12 13L21 7" stroke="#007AFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <div className="h-7 w-7 md:h-9 md:w-9 rounded-full bg-custom-accent flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M15 6.667H18.333V13.333H15V16.667L12.5 14.167H10V10.833H12.5L15 8.333V6.667Z" stroke="#312F32" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M5.83341 8.33317L8.33341 5.83317H10.8334V9.16651H8.33341L5.83341 11.6665V8.33317Z" stroke="#312F32" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M1.66675 3.33317H5.00008V9.99984H1.66675V3.33317Z" stroke="#312F32" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex flex-col">
                         <span className="font-sf-pro text-xs md:text-base text-white">
                           {`${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`}
                         </span>
-                      </div>
-                    </div>
-                  ) : isLoadingBalance ? (
-                    <div className="flex items-center space-x-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 md:px-5 md:py-2.5 shadow-sm border border-white/20 animate-pulse">
-                      <div className="h-7 w-7 md:h-9 md:w-9 rounded-full bg-white/20"></div>
-                      <div className="h-4 w-16 bg-white/20 rounded-full"></div>
-                    </div>
-                  ) : null}
-                  
-                  {solBalance !== null ? (
-                    <div className="flex items-center space-x-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 md:px-5 md:py-2.5 shadow-sm border border-white/20 transition-all duration-300 hover:bg-white/15">
-                      <div className="h-7 w-7 md:h-9 md:w-9 rounded-full bg-custom-accent flex items-center justify-center">
-                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="10" cy="10" r="10" fill="#312F32" />
-                          <path d="M6.5 13.5L13.5 6.5M6.5 6.5L13.5 13.5" stroke="#CEA388" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="font-sf-pro text-xs md:text-base text-white">{solBalance} SOL</span>
-                        <button 
-                          className="ml-2 text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
-                          onClick={fetchWalletInfo}
-                          disabled={isLoadingBalance}
-                          aria-label="Refresh balance"
-                        >
-                          {isLoadingBalance ? (
-                            <span className="inline-block animate-spin text-xs">↻</span>
-                          ) : (
-                            <span className="text-xs">↻</span>
-                          )}
-                        </button>
+                        {debugInfo.foundWalletType && (
+                          <span className="text-xs text-white/50">
+                            {debugInfo.foundWalletType}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ) : isLoadingBalance ? (
@@ -712,109 +737,7 @@ export default function HomePage() {
                 </div>
                 
                 {/* Quick action buttons */}
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("What's my wallet balance?");
-                      // Submit the form programmatically after setting the input
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Check Balance
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("What's my wallet address?");
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Show Address
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("Show my transaction history");
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Transaction History
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("Swap 1 USDC to SOL");
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#E0F2FF] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#007AFF] hover:bg-[#B8E2FF] transition-colors"
-                    disabled={isLoading || isSwapping}
-                  >
-                    Swap 
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("What commands can you help me with?");
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Help
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInput("Show me token prices");
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                      }, 100);
-                    }}
-                    className="rounded-full bg-[#F2F2F7] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#162D3A] hover:bg-[#E5E5EA] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Token Prices
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearChat}
-                    className="rounded-full bg-[#FFEBE9] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#FF3B30] hover:bg-[#FFD1CF] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Clear Chat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={testApiConnection}
-                    className="rounded-full bg-[#E0F2FF] px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium text-[#007AFF] hover:bg-[#B8E2FF] transition-colors"
-                    disabled={isLoading}
-                  >
-                    Test API
-                  </button>
-                </div>
+                {quickButtons}
                 
                 {/* Token quick access */}
                 {messages.some(msg => 
@@ -930,7 +853,7 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-              </div>
+            </div>
             </div>
 
             {/* Right column - Suggestions */}

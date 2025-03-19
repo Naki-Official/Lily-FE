@@ -28,6 +28,41 @@ export const tokens: Record<string, TokenData> = {
     image: '/images/tokens/solana.svg',
     color: '#00FFA3'
   },
+  USDC: {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    image: '/images/tokens/usdc.svg',
+    color: '#2775CA'
+  },
+  BONK: {
+    symbol: 'BONK',
+    name: 'Bonk',
+    address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+    image: '/images/tokens/bonk.svg',
+    color: '#F9A43F'
+  },
+  JTO: {
+    symbol: 'JTO',
+    name: 'Jito',
+    address: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn',
+    image: '/images/tokens/jito.svg',
+    color: '#FF5E18'
+  },
+  PYTH: {
+    symbol: 'PYTH',
+    name: 'Pyth Network',
+    address: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
+    image: '/images/tokens/pyth.svg',
+    color: '#7E2EEF'
+  },
+  WIF: {
+    symbol: 'WIF',
+    name: 'Dogwifhat',
+    address: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+    image: '/images/tokens/wif.svg',
+    color: '#FF5CAA'
+  },
   DOGE: {
     symbol: 'DOGE',
     name: 'Dogecoin',
