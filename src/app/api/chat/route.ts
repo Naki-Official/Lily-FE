@@ -113,15 +113,30 @@ let tools: any[] = [];
 
 // Runtime initialization to prevent build-time errors
 const initializeRuntime = async () => {
-  // Skip initialization if already done
-  if (solanaKit) return;
-  
-  // Use the utility function that handles build-time safely
-  const { solanaKit: kit, tools: solanaTools } = await initSolanaKit();
-  
-  // Store the results for reuse
-  solanaKit = kit;
-  tools = solanaTools;
+  try {
+    // Skip initialization if already done
+    if (solanaKit) {
+      console.log('Solana Kit already initialized, reusing existing instance');
+      return;
+    }
+    
+    console.log('Initializing Solana Kit and tools...');
+    
+    // Use the utility function that handles build-time safely
+    const { solanaKit: kit, tools: solanaTools } = await initSolanaKit();
+    
+    // Store the results for reuse
+    solanaKit = kit;
+    tools = solanaTools;
+    
+    console.log('Solana initialization complete:', {
+      kitAvailable: !!solanaKit,
+      toolsCount: tools.length
+    });
+  } catch (error) {
+    console.error('Error during runtime initialization:', error);
+    // Don't throw - let the app continue with null values
+  }
 };
 
 // Function to fetch all coins from CoinGecko API
@@ -373,6 +388,9 @@ export async function POST(req: Request) {
     // Use a simple approach to get a response from the Solana Agent Kit
     // This will handle any Solana-related commands or queries
     let response = "I'm sorry, I couldn't process your request.";
+    
+    console.log('Processing message:', userMessage);
+    console.log('Solana connection available:', !!solanaKit);
     
     // First, determine the user's intent
     const intentPatterns = [
